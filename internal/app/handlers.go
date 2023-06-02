@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func ReceiveUrl(w http.ResponseWriter, r *http.Request) {
+func ReceiveURL(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ReceiveUrl")
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -19,7 +19,7 @@ func ReceiveUrl(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Это страница created."))
 }
 
-func GetUrl(w http.ResponseWriter, r *http.Request) {
+func GetURL(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetUrl")
 	w.WriteHeader(http.StatusTemporaryRedirect)
 	w.Write([]byte("Это страница get/id."))

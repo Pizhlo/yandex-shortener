@@ -31,7 +31,7 @@ func TestGetUrl(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/", nil)
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			GetUrl(w, request)
+			GetURL(w, request)
 
 			res := w.Result()
 			// проверяем код ответа
@@ -71,7 +71,7 @@ func TestReceiveUrl(t *testing.T) {
 			b := new(bytes.Buffer)
 			b.Write([]byte("EwHXdJfB"))
 
-			ReceiveUrl(w, request)
+			ReceiveURL(w, request)
 
 			res := w.Result()
 			// проверяем код ответа

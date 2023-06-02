@@ -9,18 +9,18 @@ import (
 	internal "github.com/Pizhlo/yandex-shortener/internal/app"
 )
 
-var rId = regexp.MustCompile(`[a-zA-Z]{8}`)
+var rID = regexp.MustCompile(`[a-zA-Z]{8}`)
 
 func webhook(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("webhook")
 
 	s := strings.Replace(r.URL.Path, "/", "", -1)
 
-	if rId.MatchString(s) {
+	if rID.MatchString(s) {
 		fmt.Println(r.URL.Path)
-		internal.GetUrl(w, r)
+		internal.GetURL(w, r)
 	} else {
-		internal.ReceiveUrl(w, r)
+		internal.ReceiveURL(w, r)
 	}
 
 }
