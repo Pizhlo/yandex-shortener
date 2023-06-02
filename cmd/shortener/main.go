@@ -5,17 +5,9 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-)
 
-func ReceiveUrl(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ReceiveUrl")
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	w.Write([]byte("Это страница created."))
-	w.WriteHeader(http.StatusCreated)
-}
+	internal "github.com/Pizhlo/yandex-shortener/internal/app"
+)
 
 var rId = regexp.MustCompile(`[a-zA-Z]{8}`)
 
@@ -26,17 +18,11 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 
 	if rId.MatchString(s) {
 		fmt.Println(r.URL.Path)
-		GetUrl(w, r)
+		internal.GetUrl(w, r)
 	} else {
-		ReceiveUrl(w, r)
+		internal.ReceiveUrl(w, r)
 	}
 
-}
-
-func GetUrl(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetUrl")
-	w.Write([]byte("Это страница get/id."))
-	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 func main() {
