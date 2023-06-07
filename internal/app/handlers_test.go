@@ -64,10 +64,10 @@ func TestGetUrl(t *testing.T) {
 
 			s := strings.Replace(test.request, "/", "", -1)
 
-			expectedUrl, err := util.MakeURL(request.Host, util.Shorten(s), request.URL.Scheme)
+			expectedURL, err := util.MakeURL(request.Host, util.Shorten(s))
 			require.NoError(t, err)
 
-			assert.Equal(t, expectedUrl, w.Header().Get("Location"))
+			assert.Equal(t, expectedURL, w.Header().Get("Location"))
 		})
 	}
 }
@@ -115,7 +115,7 @@ func TestReceiveUrl(t *testing.T) {
 			resBody, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
 
-			expectedResp, err := util.MakeURL(request.Host, util.Shorten(string(test.body)), request.URL.Scheme)
+			expectedResp, err := util.MakeURL(request.Host, util.Shorten(string(test.body)))
 			require.NoError(t, err)
 
 			assert.Equal(t, expectedResp, string(resBody))

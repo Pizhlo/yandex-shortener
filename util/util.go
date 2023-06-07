@@ -20,11 +20,10 @@ func GetMD5Hash(text string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func MakeURL(baseURL, identifier string, scheme string) (string, error) {
+func MakeURL(baseURL, identifier string) (string, error) {
+	scheme := "http://"
 	fmt.Println(scheme)
-	if scheme == "" {
-		scheme = "http"
-	}
+	fmt.Println(baseURL)
 	parsed, err := url.Parse(scheme + baseURL)
 	if err != nil {
 		return "", err

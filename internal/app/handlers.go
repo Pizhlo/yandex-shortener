@@ -21,7 +21,7 @@ func ReceiveURL(m Model, w http.ResponseWriter, r *http.Request) {
 	j, _ := io.ReadAll(r.Body)
 	short := util.Shorten(string(j))
 
-	path, err := util.MakeURL(r.Host, short, r.URL.Scheme)
+	path, err := util.MakeURL(r.Host, short)
 	if err != nil {
 		fmt.Println("err: ", err)
 		w.WriteHeader(http.StatusInternalServerError)
