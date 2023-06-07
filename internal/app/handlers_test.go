@@ -78,7 +78,7 @@ func TestReceiveUrl(t *testing.T) {
 			name:       "negative test",
 			request:    "/",
 			model:      Model{},
-			statusCode: http.StatusBadRequest,
+			statusCode: http.StatusCreated,
 			body:       []byte(""),
 		},
 	}
@@ -91,7 +91,7 @@ func TestReceiveUrl(t *testing.T) {
 			w := httptest.NewRecorder()
 			m := make(Model)
 
-			ReceiveURL(m, w, request.Body)
+			ReceiveURL(m, w, request)
 
 			res := w.Result()
 
@@ -102,7 +102,7 @@ func TestReceiveUrl(t *testing.T) {
 			resBody, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
 
-			expectedResp, err := util.PrependBaseURL("http://localhost:8080/", util.Shorten(string(test.body)))
+			expectedResp, err := util.MakeURL(request.Host, util.Shorten(string(test.body)))
 			require.NoError(t, err)
 
 			assert.Equal(t, expectedResp, string(resBody))

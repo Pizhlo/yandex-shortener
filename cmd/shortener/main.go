@@ -17,7 +17,7 @@ func webhook(m internal.Model) http.HandlerFunc {
 			return
 		} else if r.Method == http.MethodPost {
 			fmt.Println("MethodPost")
-			internal.ReceiveURL(m, w, r.Body)
+			internal.ReceiveURL(m, w, r)
 			return
 		} else {
 			fmt.Println("StatusBadRequest")

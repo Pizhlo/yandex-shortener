@@ -10,34 +10,31 @@ import (
 	"github.com/Pizhlo/yandex-shortener/util"
 )
 
-var rID = regexp.MustCompile(`[a-zA-Z]{7}`)
+var rID = regexp.MustCompile(`[a-zA-Z0-9]{7}`)
 
 type Model map[string]string
 
-func ReceiveURL(m Model, w http.ResponseWriter, body io.ReadCloser) {
+func ReceiveURL(m Model, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ReceiveUrl")
 	// сократить ссылку
 	// записать в базу
-	j, _ := io.ReadAll(body)
+	j, _ := io.ReadAll(r.Body)
+	short := util.Shorten(string(j))
 
-	if len(string(j)) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-	} else {
-		short := util.Shorten(string(j))
-		fmt.Println(m)
-
-		path, err := util.PrependBaseURL("http://localhost:8080/", short)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		m[short] = string(j)
-
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(http.StatusCreated)
-
-		w.Write([]byte(path))
+	path, err := util.MakeURL(r.Host, short)
+	if err != nil {
+		fmt.Println("err: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+	m[short] = string(j)
+	fmt.Println(m)
+
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusCreated)
+
+	w.Write([]byte(path))
 }
 
 func GetURL(m Model, w http.ResponseWriter, path string) {

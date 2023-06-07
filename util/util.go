@@ -19,8 +19,8 @@ func GetMD5Hash(text string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func PrependBaseURL(baseURL, identifier string) (string, error) {
-	parsed, err := url.Parse(baseURL)
+func MakeURL(baseURL, identifier string) (string, error) {
+	parsed, err := url.Parse("https://" + baseURL)
 	if err != nil {
 		return "", err
 	}
