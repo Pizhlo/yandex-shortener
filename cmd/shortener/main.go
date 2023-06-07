@@ -13,7 +13,7 @@ func webhook(m internal.Model) http.HandlerFunc {
 
 		if r.Method == http.MethodGet {
 			fmt.Println("MethodGet")
-			internal.GetURL(m, w, r.URL.Path)
+			internal.GetURL(m, w, r)
 			return
 		} else if r.Method == http.MethodPost {
 			fmt.Println("MethodPost")

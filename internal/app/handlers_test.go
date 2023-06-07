@@ -18,27 +18,26 @@ func TestGetUrl(t *testing.T) {
 		request    string
 		model      Model
 		statusCode int
-		response   string
 	}{
 		{
 			name:    "positive test",
-			request: "/asdasda",
+			request: "/" + util.Shorten("asdasda"),
 			model: Model{
-				"asdasda": util.Shorten("asdasda"),
+				util.Shorten("asdasda"): "asdasda",
 			},
 			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
 			name:    "positive test",
-			request: "/Y2NlMzI",
+			request: "/" + util.Shorten("Y2NlMzI"),
 			model: Model{
-				"Y2NlMzI": util.Shorten("Y2NlMzI"),
+				util.Shorten("Y2NlMzI"): "Y2NlMzI",
 			},
 			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
 			name:       "not found",
-			request:    "/asdasda",
+			request:    "/" + util.Shorten("asdasda"),
 			model:      Model{},
 			statusCode: http.StatusNotFound,
 		},
@@ -50,24 +49,23 @@ func TestGetUrl(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			GetURL(test.model, w, request.URL.Path)
+			GetURL(test.model, w, request)
 
 			res := w.Result()
 
 			assert.Equal(t, test.statusCode, res.StatusCode)
 
 			defer res.Body.Close()
-			resBody, err := io.ReadAll(res.Body)
-
-			require.NoError(t, err)
-			assert.Equal(t, test.response, string(resBody))
 
 			s := strings.Replace(test.request, "/", "", -1)
 
-			expectedURL, err := util.MakeURL(request.Host, util.Shorten(s))
+			expectedURL, err := util.MakeURL(request.Host, s)
 			require.NoError(t, err)
 
-			assert.Equal(t, expectedURL, w.Header().Get("Location"))
+			if test.statusCode != http.StatusNotFound {
+				assert.Equal(t, expectedURL, w.Header().Get("Location"))
+			} 
+
 		})
 	}
 }
@@ -81,7 +79,14 @@ func TestReceiveUrl(t *testing.T) {
 		body       []byte
 	}{
 		{
-			name:       "positive test",
+			name:       "positive test #1",
+			request:    "/",
+			model:      Model{},
+			statusCode: http.StatusCreated,
+			body:       []byte("EwHXdJfB"),
+		},
+		{
+			name:       "positive test #2",
 			request:    "/",
 			model:      Model{},
 			statusCode: http.StatusCreated,

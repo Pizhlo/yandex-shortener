@@ -36,23 +36,31 @@ func ReceiveURL(m Model, w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(path))
 }
 
-func GetURL(m Model, w http.ResponseWriter, path string) {
+func GetURL(m Model, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetUrl")
-	s := strings.Replace(path, "/", "", -1)
+	s := strings.Replace(r.URL.Path, "/", "", -1)
 
 	// проверить наличие ссылки в базе
 	// выдать ссылку
 
-	fmt.Println(m)
+	fmt.Println("m = ", m)
+	fmt.Println("s = ", s)
 
 	if rID.MatchString(s) {
 		w.Header().Set("Content-Type", "text/plain")
 		fmt.Println(s)
 
-		if val, ok := m[s]; ok {
-			w.Header().Set("Location", val)
-			w.WriteHeader(http.StatusTemporaryRedirect)
+		if _, ok := m[s]; ok {
+			fmt.Println("val = ", s)
 
+			url, err := util.MakeURL(r.Host, s)
+			if err != nil {
+				fmt.Println("err: ", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Location", url)
+			w.WriteHeader(http.StatusTemporaryRedirect)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}
