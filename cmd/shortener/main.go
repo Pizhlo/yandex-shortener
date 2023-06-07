@@ -13,6 +13,7 @@ func webhook(m internal.Model) http.HandlerFunc {
 
 		if r.Method == http.MethodGet {
 			fmt.Println("MethodGet")
+			fmt.Println("webhook path = ", r.URL.Path)
 			internal.GetURL(m, w, r)
 			return
 		} else if r.Method == http.MethodPost {

@@ -21,19 +21,11 @@ func ReceiveURL(m Model, w http.ResponseWriter, r *http.Request) {
 	j, _ := io.ReadAll(r.Body)
 	short := util.Shorten(string(j))
 
-	path, err := util.MakeURL(r.Host, short)
-	if err != nil {
-		fmt.Println("err: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	m[short] = string(j)
-	fmt.Println(m)
+	fmt.Println("ReceiveUrl m =", m)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-
-	w.Write([]byte(path))
 }
 
 func GetURL(m Model, w http.ResponseWriter, r *http.Request) {
@@ -44,27 +36,16 @@ func GetURL(m Model, w http.ResponseWriter, r *http.Request) {
 	// выдать ссылку
 
 	fmt.Println("m = ", m)
-	fmt.Println("s = ", s)
+	fmt.Println("r.URL.Path = ", r.URL.Path)
 
-	if rID.MatchString(s) {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Println(s)
-
-		if _, ok := m[s]; ok {
-			fmt.Println("val = ", s)
-
-			//url, err := util.MakeURL(r.Host, s)
-			// if err != nil {
-			// 	fmt.Println("err: ", err)
-			// 	w.WriteHeader(http.StatusInternalServerError)
-			// 	return
-			// }
-			w.Header().Set("Location", m[s])
-			w.WriteHeader(http.StatusTemporaryRedirect)
-		} else {
-			w.WriteHeader(http.StatusNotFound)
-		}
+	if val, ok := m[s]; ok {
+		setLocation(w, val)
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusNotFound)
 	}
+}
+
+func setLocation(w http.ResponseWriter, addr string) {
+	w.Header().Set("Location", addr)
+	w.WriteHeader(http.StatusTemporaryRedirect)
 }
