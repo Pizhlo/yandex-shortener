@@ -20,15 +20,15 @@ func TestGetUrl(t *testing.T) {
 		statusCode int
 	}{
 		{
-			name:    "positive test",
-			request: "/" + util.Shorten("asdasda"),
+			name:    "positive test #1",
+			request: "/YjhkNDY",
 			model: Model{
-				util.Shorten("asdasda"): "asdasda",
+				"YjhkNDY": "https://practicum.yandex.ru/",
 			},
 			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
-			name:    "positive test",
+			name:    "positive test #2",
 			request: "/" + util.Shorten("Y2NlMzI"),
 			model: Model{
 				util.Shorten("Y2NlMzI"): "Y2NlMzI",
@@ -59,12 +59,12 @@ func TestGetUrl(t *testing.T) {
 
 			s := strings.Replace(test.request, "/", "", -1)
 
-			expectedURL, err := util.MakeURL(request.Host, s)
-			require.NoError(t, err)
+			// expectedURL, err := util.MakeURL(request.Host, s)
+			// require.NoError(t, err)
 
 			if test.statusCode != http.StatusNotFound {
-				assert.Equal(t, expectedURL, w.Header().Get("Location"))
-			} 
+				assert.Equal(t, test.model[s], w.Header().Get("Location"))
+			}
 
 		})
 	}

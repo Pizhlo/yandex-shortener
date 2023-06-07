@@ -53,13 +53,13 @@ func GetURL(m Model, w http.ResponseWriter, r *http.Request) {
 		if _, ok := m[s]; ok {
 			fmt.Println("val = ", s)
 
-			url, err := util.MakeURL(r.Host, s)
-			if err != nil {
-				fmt.Println("err: ", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Location", url)
+			//url, err := util.MakeURL(r.Host, s)
+			// if err != nil {
+			// 	fmt.Println("err: ", err)
+			// 	w.WriteHeader(http.StatusInternalServerError)
+			// 	return
+			// }
+			w.Header().Set("Location", m[s])
 			w.WriteHeader(http.StatusTemporaryRedirect)
 		} else {
 			w.WriteHeader(http.StatusNotFound)
@@ -67,5 +67,4 @@ func GetURL(m Model, w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 	}
-
 }
