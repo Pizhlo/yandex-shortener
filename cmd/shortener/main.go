@@ -3,40 +3,29 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"regexp"
-	"strings"
+
+	internal "github.com/Pizhlo/yandex-shortener/internal/app"
 )
 
-func ReceiveUrl(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ReceiveUrl")
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	w.Write([]byte("Это страница created."))
-	w.WriteHeader(http.StatusCreated)
-}
+func webhook(m internal.Model) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("webhook")
 
-var rId = regexp.MustCompile(`[a-zA-Z]{8}`)
-
-func webhook(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("webhook")
-
-	s := strings.Replace(r.URL.Path, "/", "", -1)
-
-	if rId.MatchString(s) {
-		fmt.Println(r.URL.Path)
-		GetUrl(w, r)
-	} else {
-		ReceiveUrl(w, r)
+		if r.Method == http.MethodGet {
+			fmt.Println("MethodGet")
+			internal.GetURL(m, w, r)
+			return
+		} else if r.Method == http.MethodPost {
+			fmt.Println("MethodPost")
+			internal.ReceiveURL(m, w, r)
+			return
+		} else {
+			fmt.Println("StatusBadRequest")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
-}
-
-func GetUrl(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("GetUrl")
-	w.Write([]byte("Это страница get/id."))
-	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 func main() {
@@ -48,7 +37,8 @@ func main() {
 
 func run() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, http.HandlerFunc(webhook))
+	m := make(internal.Model)
+	mux.HandleFunc(`/`, webhook(m))
 
 	return http.ListenAndServe(`:8080`, mux)
 }
