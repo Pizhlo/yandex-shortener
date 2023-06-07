@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"net/url"
 )
 
@@ -19,8 +20,12 @@ func GetMD5Hash(text string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func MakeURL(baseURL, identifier string) (string, error) {
-	parsed, err := url.Parse("https://" + baseURL)
+func MakeURL(baseURL, identifier string, scheme string) (string, error) {
+	fmt.Println(scheme)
+	if scheme == "" {
+		scheme = "http"
+	}
+	parsed, err := url.Parse(scheme + baseURL)
 	if err != nil {
 		return "", err
 	}

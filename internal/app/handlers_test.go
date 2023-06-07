@@ -27,14 +27,20 @@ func TestGetUrl(t *testing.T) {
 				"asdasda": util.Shorten("asdasda"),
 			},
 			statusCode: http.StatusTemporaryRedirect,
-			response:   util.Shorten("asdasda"),
+		},
+		{
+			name:    "positive test",
+			request: "/Y2NlMzI",
+			model: Model{
+				"Y2NlMzI": util.Shorten("Y2NlMzI"),
+			},
+			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
 			name:       "not found",
 			request:    "/asdasda",
 			model:      Model{},
 			statusCode: http.StatusNotFound,
-			response:   "Not found",
 		},
 	}
 
@@ -55,6 +61,13 @@ func TestGetUrl(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, test.response, string(resBody))
+
+			s := strings.Replace(test.request, "/", "", -1)
+
+			expectedUrl, err := util.MakeURL(request.Host, util.Shorten(s), request.URL.Scheme)
+			require.NoError(t, err)
+
+			assert.Equal(t, expectedUrl, w.Header().Get("Location"))
 		})
 	}
 }
@@ -102,7 +115,7 @@ func TestReceiveUrl(t *testing.T) {
 			resBody, err := io.ReadAll(res.Body)
 			require.NoError(t, err)
 
-			expectedResp, err := util.MakeURL(request.Host, util.Shorten(string(test.body)))
+			expectedResp, err := util.MakeURL(request.Host, util.Shorten(string(test.body)), request.URL.Scheme)
 			require.NoError(t, err)
 
 			assert.Equal(t, expectedResp, string(resBody))
