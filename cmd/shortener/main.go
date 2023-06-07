@@ -3,24 +3,27 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"regexp"
-	"strings"
 
 	internal "github.com/Pizhlo/yandex-shortener/internal/app"
 )
 
-var rID = regexp.MustCompile(`[a-zA-Z]{8}`)
+func webhook(m internal.Model) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("webhook")
 
-func webhook(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("webhook")
-
-	s := strings.Replace(r.URL.Path, "/", "", -1)
-
-	if rID.MatchString(s) {
-		fmt.Println(r.URL.Path)
-		internal.GetURL(w, r)
-	} else {
-		internal.ReceiveURL(w, r)
+		if r.Method == http.MethodGet {
+			fmt.Println("MethodGet")
+			internal.GetURL(m, w, r.URL.Path)
+			return
+		} else if r.Method == http.MethodPost {
+			fmt.Println("MethodPost")
+			internal.ReceiveURL(m, w, r.Body)
+			return
+		} else {
+			fmt.Println("StatusBadRequest")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 	}
 
 }
@@ -34,7 +37,8 @@ func main() {
 
 func run() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, http.HandlerFunc(webhook))
+	m := make(internal.Model)
+	mux.HandleFunc(`/`, webhook(m))
 
 	return http.ListenAndServe(`:8080`, mux)
 }
