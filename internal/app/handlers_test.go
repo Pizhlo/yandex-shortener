@@ -76,9 +76,10 @@ func TestGetURL(t *testing.T) {
 
 	for _, v := range tests {
 		ts := httptest.NewServer(runTestServer(v.model))
-
 		defer ts.Close()
+		
 		resp := testRequest(t, ts, "GET", v.request, nil)
+		defer resp.Body.Close()
 
 		assert.Equal(t, v.statusCode, resp.StatusCode)
 
