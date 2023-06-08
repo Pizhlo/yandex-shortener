@@ -5,9 +5,9 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-	"strings"
 
 	"github.com/Pizhlo/yandex-shortener/util"
+	"github.com/go-chi/chi"
 )
 
 var rID = regexp.MustCompile(`[a-zA-Z0-9]{7}`)
@@ -38,15 +38,16 @@ func ReceiveURL(m Model, w http.ResponseWriter, r *http.Request) {
 
 func GetURL(m Model, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetUrl")
-	s := strings.Replace(r.URL.Path, "/", "", -1)
+	id := chi.URLParam(r, "id")
 
 	// проверить наличие ссылки в базе
 	// выдать ссылку
 
 	fmt.Println("m = ", m)
+	fmt.Println("id = ", id)
 	fmt.Println("r.URL.Path = ", r.URL.Path)
 
-	if val, ok := m[s]; ok {
+	if val, ok := m[id]; ok {
 		setLocation(w, val)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
