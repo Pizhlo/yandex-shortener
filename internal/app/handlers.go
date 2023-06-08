@@ -48,9 +48,15 @@ func GetURL(m Model, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("r.URL.Path = ", r.URL.Path)
 
 	if val, ok := m[id]; ok {
+		fmt.Println("val was found")
 		setLocation(w, val)
+		
+		fmt.Println("header = ", w.Header())
+		return
 	} else {
+		fmt.Println("val was not found")
 		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 }
 

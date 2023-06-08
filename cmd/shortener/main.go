@@ -7,35 +7,11 @@ import (
 	"github.com/go-chi/chi"
 )
 
-// func webhook(m internal.Model) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		fmt.Println("webhook")
-
-// 		if r.Method == http.MethodGet {
-// 			fmt.Println("MethodGet")
-// 			internal.GetURL(m, w, r)
-// 			return
-// 		} else if r.Method == http.MethodPost {
-// 			fmt.Println("MethodPost")
-// 			internal.ReceiveURL(m, w, r)
-// 			return
-// 		} else {
-// 			fmt.Println("StatusBadRequest")
-// 			w.WriteHeader(http.StatusBadRequest)
-// 			return
-// 		}
-// 	}
-
-// }
-
 func main() {
-	if err := run(); err != nil {
-		panic(err)
-	}
+    http.ListenAndServe(":8080", Run())
+} 
 
-}
-
-func run() error {
+func Run() chi.Router {
 	m := make(internal.Model)
 
 	r := chi.NewRouter()
@@ -46,5 +22,5 @@ func run() error {
 		internal.ReceiveURL(m, rw, r)
 	})
 
-	return http.ListenAndServe(":8080", r)
+	return r
 }
