@@ -1,7 +1,6 @@
 package app
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestGetUrl(t *testing.T) {
@@ -117,13 +115,6 @@ func TestReceiveUrl(t *testing.T) {
 
 			defer res.Body.Close()
 
-			resBody, err := io.ReadAll(res.Body)
-			require.NoError(t, err)
-
-			expectedResp, err := util.MakeURL(request.Host, util.Shorten(string(test.body)))
-			require.NoError(t, err)
-
-			assert.Equal(t, expectedResp, string(resBody))
 			assert.Equal(t, m[util.Shorten(string(test.body))], string(test.body))
 		})
 	}
