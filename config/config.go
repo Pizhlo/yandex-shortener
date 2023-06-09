@@ -10,7 +10,7 @@ var FlagRunAddr string
 var FlagBaseAddr string
 //var FlagBasePort string
 
-var baseAddrRegexp = regexp.MustCompile(":[0-9]{1,}")
+var baseAddrRegexp = regexp.MustCompile("^:[0-9]{1,}$")
 
 func ParseFlags() {
 
