@@ -20,9 +20,7 @@ func GetMD5Hash(text string) string {
 }
 
 func MakeURL(baseURL, identifier string) (string, error) {
-	scheme := "http://"
-
-	parsed, err := url.Parse(scheme + baseURL)
+	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return "", err
 	}

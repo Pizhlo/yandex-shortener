@@ -33,11 +33,12 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 
 func runTestServer(m Model) chi.Router {
 	router := chi.NewRouter()
+	baseURL := "http://localhost:8000/"
 	router.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
 		GetURL(m, rw, r)
 	})
 	router.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		ReceiveURL(m, rw, r)
+		ReceiveURL(m, rw, r, baseURL)
 	})
 
 	return router
