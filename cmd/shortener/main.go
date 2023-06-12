@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/Pizhlo/yandex-shortener/config"
@@ -10,7 +11,10 @@ import (
 )
 
 func main() {
-	config.ParseFlags()
+	err := config.ParseConfigAndFlags()
+	if err != nil {
+		log.Fatal("unable to load config:", err)
+	}
 
 	fmt.Println("Running server on", config.FlagRunAddr)
 

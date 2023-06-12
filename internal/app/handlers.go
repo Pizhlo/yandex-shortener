@@ -23,10 +23,6 @@ func ReceiveURL(m Model, w http.ResponseWriter, r *http.Request, baseURL string)
 	fmt.Println("ReceiveUrl baseURL =", baseURL)
 	fmt.Println("r.Host =", r.Host)
 
-	if r.Host == "localhost" {
-		baseURL = fmt.Sprintf("http://localhost:%s", baseURL)
-	}
-
 	fmt.Println("ReceiveUrl baseURL =", baseURL)
 
 	path, err := util.MakeURL(baseURL, short)
