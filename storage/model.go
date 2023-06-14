@@ -6,10 +6,12 @@ type LinkStorage struct {
 	Store map[string]string
 }
 
-var ErrNotFound = errors.New("Not found")
+var ErrNotFound = errors.New("not found")
 
 func New() *LinkStorage {
-	return &LinkStorage{}
+	return &LinkStorage{
+		Store: map[string]string{},
+	}
 }
 
 func (s *LinkStorage) GetByID(id string) (string, error) {

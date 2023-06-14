@@ -52,7 +52,7 @@ func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) 
 
 	if val, err := storage.GetByID(id); err == nil {
 		setLocation(w, val)
-	} else if errors.Is(err, store.NotFoundErr) {
+	} else if errors.Is(err, store.ErrNotFound) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	} else {
