@@ -10,8 +10,11 @@ import (
 func Shorten(s string) string {
 	hash := GetMD5Hash(s)
 	encoded := base64.StdEncoding.EncodeToString([]byte(hash))
-
-	return encoded[:7]
+	if len(encoded) > 6 {
+		return encoded[:7]
+	} else {
+		return encoded
+	}
 }
 
 func GetMD5Hash(text string) string {

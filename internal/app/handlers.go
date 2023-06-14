@@ -1,25 +1,31 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
+	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
 )
 
-type Model map[string]string
-
-func ReceiveURL(m Model, w http.ResponseWriter, r *http.Request, baseURL string) {
+func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string) {
 	fmt.Println("ReceiveUrl")
 	// сократить ссылку
 	// записать в базу
-	j, _ := io.ReadAll(r.Body)
+	j, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	short := util.Shorten(string(j))
 
-	m[short] = string(j)
-	fmt.Println("ReceiveUrl m =", m)
+	storage.SaveLink(short, string(j))
+
+	fmt.Println("ReceiveUrl storage =", storage.Store)
 	fmt.Println("ReceiveUrl baseURL =", baseURL)
 	fmt.Println("r.Host =", r.Host)
 
@@ -37,18 +43,20 @@ func ReceiveURL(m Model, w http.ResponseWriter, r *http.Request, baseURL string)
 	w.Write([]byte(path))
 }
 
-func GetURL(m Model, w http.ResponseWriter, r *http.Request) {
+func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetUrl")
 	id := chi.URLParam(r, "id")
 
 	// проверить наличие ссылки в базе
 	// выдать ссылку
 
-	if val, ok := m[id]; ok {
+	if val, err := storage.GetByID(id); err == nil {
 		setLocation(w, val)
+	} else if errors.Is(err, store.NotFoundErr) {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	} else {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 }

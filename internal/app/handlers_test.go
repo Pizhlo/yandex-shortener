@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
@@ -31,14 +32,14 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 	return resp
 }
 
-func runTestServer(m Model) chi.Router {
+func runTestServer(storage *store.LinkStorage) chi.Router {
 	router := chi.NewRouter()
 	baseURL := "http://localhost:8000/"
 	router.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
-		GetURL(m, rw, r)
+		GetURL(storage, rw, r)
 	})
 	router.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		ReceiveURL(m, rw, r, baseURL)
+		ReceiveURL(storage, rw, r, baseURL)
 	})
 
 	return router
@@ -48,37 +49,43 @@ func TestGetURL(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
-		model      Model
+		store      store.LinkStorage
 		statusCode int
 	}{
 		{
 			name:    "positive test #1",
 			request: "/YjhkNDY",
-			model: Model{
-				"YjhkNDY": "https://practicum.yandex.ru/",
+			store: store.LinkStorage{
+				Store: map[string]string{
+					"YjhkNDY": "https://practicum.yandex.ru/",
+				},
 			},
 			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
 			name:    "positive test #2",
 			request: "/" + util.Shorten("Y2NlMzI"),
-			model: Model{
-				util.Shorten("Y2NlMzI"): "Y2NlMzI",
+			store: store.LinkStorage{
+				Store: map[string]string{
+					util.Shorten("Y2NlMzI"): "Y2NlMzI",
+				},
 			},
 			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
 			name:       "not found",
 			request:    "/" + util.Shorten("asdasda"),
-			model:      Model{},
+			store: store.LinkStorage{
+				Store: map[string]string{},
+			},
 			statusCode: http.StatusNotFound,
 		},
 	}
 
 	for _, v := range tests {
-		ts := httptest.NewServer(runTestServer(v.model))
+		ts := httptest.NewServer(runTestServer(&v.store))
 		defer ts.Close()
-		
+
 		resp := testRequest(t, ts, "GET", v.request, nil)
 		defer resp.Body.Close()
 
@@ -87,7 +94,7 @@ func TestGetURL(t *testing.T) {
 		if v.statusCode != http.StatusNotFound {
 			s := strings.Replace(v.request, "/", "", -1)
 
-			assert.Equal(t, v.model[s], resp.Header.Get("Location"))
+			assert.Equal(t, v.store.Store[s], resp.Header.Get("Location"))
 		}
 	}
 }
@@ -96,28 +103,34 @@ func TestReceiveUrl(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
-		model      Model
+		store      store.LinkStorage
 		statusCode int
 		body       []byte
 	}{
 		{
 			name:       "positive test #1",
 			request:    "/",
-			model:      Model{},
+			store: store.LinkStorage{
+				Store: map[string]string{},
+			},
 			statusCode: http.StatusCreated,
 			body:       []byte("https://practicum.yandex.ru/"),
 		},
 		{
 			name:       "positive test #2",
 			request:    "/",
-			model:      Model{},
+			store: store.LinkStorage{
+				Store: map[string]string{},
+			},
 			statusCode: http.StatusCreated,
 			body:       []byte("EwHXdJfB"),
 		},
 		{
 			name:       "negative test",
 			request:    "/",
-			model:      Model{},
+			store: store.LinkStorage{
+				Store: map[string]string{},
+			},
 			statusCode: http.StatusCreated,
 			body:       []byte(""),
 		},
@@ -125,7 +138,7 @@ func TestReceiveUrl(t *testing.T) {
 
 	for _, v := range tests {
 		// w := httptest.NewRecorder()
-		ts := httptest.NewServer(runTestServer(v.model))
+		ts := httptest.NewServer(runTestServer(&v.store))
 		defer ts.Close()
 
 		body := strings.NewReader(string(v.body))
@@ -134,7 +147,7 @@ func TestReceiveUrl(t *testing.T) {
 
 		assert.Equal(t, v.statusCode, resp.StatusCode)
 
-		assert.Equal(t, v.model[util.Shorten(string(v.body))], string(v.body))
+		assert.Equal(t, v.store.Store[util.Shorten(string(v.body))], string(v.body))
 
 	}
 }

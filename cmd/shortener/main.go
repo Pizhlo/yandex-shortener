@@ -2,34 +2,31 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/Pizhlo/yandex-shortener/config"
 	internal "github.com/Pizhlo/yandex-shortener/internal/app"
+	"github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/go-chi/chi"
 )
 
 func main() {
-	err := config.ParseConfigAndFlags()
-	if err != nil {
-		log.Fatal("unable to load config:", err)
-	}
+	conf := config.ParseConfigAndFlags()
 
-	fmt.Println("Running server on", config.FlagRunAddr)
+	fmt.Println("Running server on", conf.FlagRunAddr)
 
-	http.ListenAndServe(config.FlagRunAddr, Run())
+	http.ListenAndServe(conf.FlagRunAddr, Run(conf))
 }
 
-func Run() chi.Router {
-	m := make(internal.Model)
+func Run(conf config.Config) chi.Router {
+	storage := storage.New()
 
 	r := chi.NewRouter()
 	r.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
-		internal.GetURL(m, rw, r)
+		internal.GetURL(storage, rw, r)
 	})
 	r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		internal.ReceiveURL(m, rw, r, config.FlagBaseAddr)
+		internal.ReceiveURL(storage, rw, r, conf.FlagBaseAddr)
 	})
 
 	return r
