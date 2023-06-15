@@ -50,15 +50,16 @@ func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) 
 	// проверить наличие ссылки в базе
 	// выдать ссылку
 
-	if val, err := storage.GetByID(id); err == nil {
-		setLocation(w, val)
-	} else if errors.Is(err, store.ErrNotFound) {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	} else {
+	val, err := storage.GetByID(id)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	setLocation(w, val)
 }
 
 func setLocation(w http.ResponseWriter, addr string) {

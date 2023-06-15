@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/Pizhlo/yandex-shortener/config"
@@ -15,7 +16,9 @@ func main() {
 
 	fmt.Println("Running server on", conf.FlagRunAddr)
 
-	http.ListenAndServe(conf.FlagRunAddr, Run(conf))
+	if err := http.ListenAndServe(conf.FlagRunAddr, Run(conf)); err != nil {
+		log.Panic("error while executing server: %w\n", err)
+	}
 }
 
 func Run(conf config.Config) chi.Router {
