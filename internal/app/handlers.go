@@ -15,6 +15,7 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 	fmt.Println("ReceiveUrl")
 	// сократить ссылку
 	// записать в базу
+
 	j, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -45,11 +46,10 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 
 func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetUrl")
-	id := chi.URLParam(r, "id")
 
 	// проверить наличие ссылки в базе
 	// выдать ссылку
-
+	id := chi.URLParam(r, "id")
 	val, err := storage.GetByID(id)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
