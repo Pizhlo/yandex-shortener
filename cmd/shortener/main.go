@@ -48,5 +48,11 @@ func Run(conf config.Config) chi.Router {
 		internal.ReceiveURL(storage, rw, r, conf.FlagBaseAddr)
 	})
 
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
+			internal.ReceiveURLAPI(storage, rw, r, conf.FlagBaseAddr)
+		})
+	})
+
 	return r
 }

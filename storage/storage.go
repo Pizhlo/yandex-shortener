@@ -14,7 +14,7 @@ func New() *LinkStorage {
 	}
 }
 
-func (s *LinkStorage) GetByID(id string) (string, error) {
+func (s *LinkStorage) GetLinkByID(id string) (string, error) {
 	if val, ok := s.Store[id]; ok {
 		return val, nil
 	} else {

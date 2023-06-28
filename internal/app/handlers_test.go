@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +17,11 @@ import (
 
 func testRequest(t *testing.T, ts *httptest.Server, method,
 	path string, body io.Reader) *http.Response {
+
 	req, err := http.NewRequest(method, ts.URL+path, body)
+	req.Close = true
+	req.Header.Add("Connection", "keep-alive")
+	req.Header.Add("User-Agent", "PostmanRuntime/7.32.3")
 	require.NoError(t, err)
 
 	ts.Client()
@@ -35,14 +40,55 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 func runTestServer(storage *store.LinkStorage) chi.Router {
 	router := chi.NewRouter()
 	baseURL := "http://localhost:8000/"
+
 	router.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
 		GetURL(storage, rw, r)
 	})
 	router.Post("/", func(rw http.ResponseWriter, r *http.Request) {
 		ReceiveURL(storage, rw, r, baseURL)
 	})
+	router.Route("/api", func(r chi.Router) {
+		r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
+			ReceiveURLAPI(storage, rw, r, baseURL)
+		})
+	})
 
 	return router
+}
+
+func TestReceiveURLAPI(t *testing.T) {
+	testCases := []struct {
+		name         string
+		method       string
+		body         string
+		store        store.LinkStorage
+		request      string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:   "positive test",
+			method: http.MethodPost,
+			body:   `{"url": "https://practicum.yandex.ru"}`,
+			store: store.LinkStorage{
+				Store: map[string]string{},
+			},
+			request:      "/api/shorten",
+			expectedCode: http.StatusCreated,
+			expectedBody: `{"result": "http://localhost:8080/NmJkYjV"}`,
+		},
+	}
+
+	for _, v := range testCases {
+		ts := httptest.NewServer(runTestServer(&v.store))
+		defer ts.Close()
+
+		resp := testRequest(t, ts, v.method, v.request, bytes.NewReader([]byte(v.body)))
+		defer resp.Body.Close()
+
+		assert.Equal(t, v.expectedCode, resp.StatusCode)
+		assert.Equal(t, v.body, resp.Body)
+	}
 }
 
 func TestGetURL(t *testing.T) {
@@ -73,8 +119,8 @@ func TestGetURL(t *testing.T) {
 			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
-			name:       "not found",
-			request:    "/" + util.Shorten("asdasda"),
+			name:    "not found",
+			request: "/" + util.Shorten("asdasda"),
 			store: store.LinkStorage{
 				Store: map[string]string{},
 			},
@@ -108,8 +154,8 @@ func TestReceiveUrl(t *testing.T) {
 		body       []byte
 	}{
 		{
-			name:       "positive test #1",
-			request:    "/",
+			name:    "positive test #1",
+			request: "/",
 			store: store.LinkStorage{
 				Store: map[string]string{},
 			},
@@ -117,8 +163,8 @@ func TestReceiveUrl(t *testing.T) {
 			body:       []byte("https://practicum.yandex.ru/"),
 		},
 		{
-			name:       "positive test #2",
-			request:    "/",
+			name:    "positive test #2",
+			request: "/",
 			store: store.LinkStorage{
 				Store: map[string]string{},
 			},
@@ -126,8 +172,8 @@ func TestReceiveUrl(t *testing.T) {
 			body:       []byte("EwHXdJfB"),
 		},
 		{
-			name:       "negative test",
-			request:    "/",
+			name:    "negative test",
+			request: "/",
 			store: store.LinkStorage{
 				Store: map[string]string{},
 			},
