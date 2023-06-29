@@ -77,7 +77,7 @@ func TestReceiveURLAPI(t *testing.T) {
 				Store: map[string]string{},
 			},
 			request:      "/api/shorten",
-			expectedCode: http.StatusOK,
+			expectedCode: http.StatusCreated,
 			expectedBody: models.Response{
 				Result: `http://localhost:8000/NmJkYjV`,
 			},

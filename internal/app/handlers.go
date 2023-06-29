@@ -43,7 +43,7 @@ func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Re
 		Result: path,
 	}
 
-	setHeader(w, "Content-Type", "application/json", http.StatusOK)
+	setHeader(w, "Content-Type", "application/json", http.StatusCreated)
 
 	respJSON, err := json.Marshal(resp)
 	if err != nil {
