@@ -92,7 +92,7 @@ func TestReceiveURLAPI(t *testing.T) {
 		require.NoError(t, err)
 
 		resp := testRequest(t, ts, v.method, v.request, bytes.NewReader(bodyJSON))
-		//defer resp.Body.Close()
+		defer resp.Body.Close()
 
 		assert.Equal(t, v.expectedCode, resp.StatusCode)
 
@@ -120,7 +120,7 @@ func TestGetURL(t *testing.T) {
 					"YjhkNDY": "https://practicum.yandex.ru/",
 				},
 			},
-			statusCode: http.StatusMovedPermanently,
+			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
 			name:    "positive test #2",
@@ -130,7 +130,7 @@ func TestGetURL(t *testing.T) {
 					util.Shorten("Y2NlMzI"): "Y2NlMzI",
 				},
 			},
-			statusCode: http.StatusMovedPermanently,
+			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
 			name:    "not found",

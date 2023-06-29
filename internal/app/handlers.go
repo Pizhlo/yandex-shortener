@@ -108,7 +108,7 @@ func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	setHeader(w, "Location", val, http.StatusMovedPermanently)
+	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
 }
 
 func setHeader(w http.ResponseWriter, header string, val string, statusCode int) {
