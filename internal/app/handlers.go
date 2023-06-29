@@ -39,14 +39,11 @@ func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	fmt.Println("path = ", path)
-
 	resp := models.Response{
 		Result: path,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	setHeader(w, "Content-Type", "application/json", http.StatusOK)
 
 	respJSON, err := json.Marshal(resp)
 	if err != nil {
@@ -91,8 +88,7 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
+	setHeader(w, "Content-Type", "text/plain", http.StatusCreated)
 	w.Write([]byte(path))
 }
 
@@ -112,10 +108,10 @@ func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	setLocation(w, val)
+	setHeader(w, "Location", val, http.StatusMovedPermanently)
 }
 
-func setLocation(w http.ResponseWriter, addr string) {
-	w.Header().Set("Location", addr)
-	w.WriteHeader(http.StatusTemporaryRedirect)
+func setHeader(w http.ResponseWriter, header string, val string, statusCode int) {
+	w.Header().Set(header, val)
+	w.WriteHeader(statusCode)
 }

@@ -2,12 +2,15 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
@@ -32,7 +35,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	//defer resp.Body.Close()
 
 	return resp
 }
@@ -60,22 +63,24 @@ func TestReceiveURLAPI(t *testing.T) {
 	testCases := []struct {
 		name         string
 		method       string
-		body         string
+		body         models.Request
 		store        store.LinkStorage
 		request      string
 		expectedCode int
-		expectedBody string
+		expectedBody models.Response
 	}{
 		{
 			name:   "positive test",
 			method: http.MethodPost,
-			body:   `{"url": "https://practicum.yandex.ru"}`,
+			body:   models.Request{URL: "https://practicum.yandex.ru"},
 			store: store.LinkStorage{
 				Store: map[string]string{},
 			},
 			request:      "/api/shorten",
-			expectedCode: http.StatusCreated,
-			expectedBody: `{"result": "http://localhost:8080/NmJkYjV"}`,
+			expectedCode: http.StatusOK,
+			expectedBody: models.Response{
+				Result: `http://localhost:8000/NmJkYjV`,
+			},
 		},
 	}
 
@@ -83,11 +88,20 @@ func TestReceiveURLAPI(t *testing.T) {
 		ts := httptest.NewServer(runTestServer(&v.store))
 		defer ts.Close()
 
-		resp := testRequest(t, ts, v.method, v.request, bytes.NewReader([]byte(v.body)))
-		defer resp.Body.Close()
+		bodyJSON, err := json.Marshal(v.body)
+		require.NoError(t, err)
+
+		resp := testRequest(t, ts, v.method, v.request, bytes.NewReader(bodyJSON))
+		//defer resp.Body.Close()
 
 		assert.Equal(t, v.expectedCode, resp.StatusCode)
-		assert.Equal(t, v.body, resp.Body)
+
+		var result models.Response
+		dec := json.NewDecoder(resp.Body)
+		err = dec.Decode(&result)
+		require.NoError(t, err)
+
+		assert.Equal(t, v.expectedBody, result)
 	}
 }
 
@@ -106,7 +120,7 @@ func TestGetURL(t *testing.T) {
 					"YjhkNDY": "https://practicum.yandex.ru/",
 				},
 			},
-			statusCode: http.StatusTemporaryRedirect,
+			statusCode: http.StatusMovedPermanently,
 		},
 		{
 			name:    "positive test #2",
@@ -116,7 +130,7 @@ func TestGetURL(t *testing.T) {
 					util.Shorten("Y2NlMzI"): "Y2NlMzI",
 				},
 			},
-			statusCode: http.StatusTemporaryRedirect,
+			statusCode: http.StatusMovedPermanently,
 		},
 		{
 			name:    "not found",
@@ -145,13 +159,14 @@ func TestGetURL(t *testing.T) {
 	}
 }
 
-func TestReceiveUrl(t *testing.T) {
+func TestReceiveURL(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
 		store      store.LinkStorage
 		statusCode int
 		body       []byte
+		expectedBody string
 	}{
 		{
 			name:    "positive test #1",
@@ -161,6 +176,7 @@ func TestReceiveUrl(t *testing.T) {
 			},
 			statusCode: http.StatusCreated,
 			body:       []byte("https://practicum.yandex.ru/"),
+			expectedBody: "http://localhost:8000/MGRkMTk",
 		},
 		{
 			name:    "positive test #2",
@@ -170,6 +186,7 @@ func TestReceiveUrl(t *testing.T) {
 			},
 			statusCode: http.StatusCreated,
 			body:       []byte("EwHXdJfB"),
+			expectedBody: "http://localhost:8000/ODczZGQ",
 		},
 		{
 			name:    "negative test",
@@ -179,6 +196,7 @@ func TestReceiveUrl(t *testing.T) {
 			},
 			statusCode: http.StatusCreated,
 			body:       []byte(""),
+			expectedBody: "http://localhost:8000/ZDQxZDh",
 		},
 	}
 
@@ -193,7 +211,12 @@ func TestReceiveUrl(t *testing.T) {
 
 		assert.Equal(t, v.statusCode, resp.StatusCode)
 
-		assert.Equal(t, v.store.Store[util.Shorten(string(v.body))], string(v.body))
+		resBody, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		fmt.Println("resBody = ", string(resBody))
+
+		assert.Equal(t, v.expectedBody, string(resBody))
 
 	}
 }
