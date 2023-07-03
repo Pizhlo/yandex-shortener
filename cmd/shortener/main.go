@@ -5,6 +5,7 @@ import (
 
 	"github.com/Pizhlo/yandex-shortener/config"
 	internal "github.com/Pizhlo/yandex-shortener/internal/app"
+	"github.com/Pizhlo/yandex-shortener/internal/app/compress"
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/go-chi/chi"
@@ -40,6 +41,8 @@ func Run(conf config.Config) chi.Router {
 
 	r := chi.NewRouter()
 	r.Use(log.WithLogging)
+	r.Use(compress.UnpackData)
+	r.Use(compress.PackData)
 
 	r.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
 		internal.GetURL(storage, rw, r)
