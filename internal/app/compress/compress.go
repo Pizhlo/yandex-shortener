@@ -20,17 +20,19 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 // упаковка
 // сжимает данные
 func PackData(next http.Handler) http.Handler {
-	fmt.Println("GzipHandle")
+	fmt.Println("PackData")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") { // если клиент не готов к сжатым данным, идем дальше
+			fmt.Println("PackData !strings.Contains")
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		if r.Header.Get("Content-Type") != "application/json" || r.Header.Get("Content-Type") != "text/html" {
-			next.ServeHTTP(w, r)
-			return
-		}
+		// if r.Header.Get("Content-Type") != "application/json" || r.Header.Get("Content-Type") != "text/html" {
+		// 	fmt.Println("PackData !r.Header.Get")
+		// 	next.ServeHTTP(w, r)
+		// 	return
+		// }
 
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
@@ -48,20 +50,17 @@ func PackData(next http.Handler) http.Handler {
 // распаковка
 // принимает сжатые данные
 func UnpackData(next http.Handler) http.Handler {
-	fmt.Println("LengthHandle")
+	fmt.Println("UnpackData")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		if r.Header.Get("Content-Type") != "application/json" || r.Header.Get("Content-Type") != "text/html" {
+		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") { // если клиент не сжимал данные, идем дальше
+			fmt.Println("UnpackData !strings.Contains")
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		gz, err := gzip.NewReader(r.Body)
 		if err != nil {
+			fmt.Println("gzip.NewReader err")
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -70,9 +69,11 @@ func UnpackData(next http.Handler) http.Handler {
 
 		body, err := io.ReadAll(gz)
 		if err != nil {
+			fmt.Println("io.ReadAll err")
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
 		fmt.Fprintf(w, "Length: %d", len(body))
 	})
 }
