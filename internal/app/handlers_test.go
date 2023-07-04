@@ -14,6 +14,7 @@ import (
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -48,11 +49,11 @@ func runTestServer(storage *store.LinkStorage) chi.Router {
 		GetURL(storage, rw, r)
 	})
 	router.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		ReceiveURL(storage, rw, r, baseURL)
+		ReceiveURL(storage, rw, r, baseURL, false)
 	})
 	router.Route("/api", func(r chi.Router) {
 		r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
-			ReceiveURLAPI(storage, rw, r, baseURL)
+			ReceiveURLAPI(storage, rw, r, baseURL, false)
 		})
 	})
 
@@ -74,7 +75,7 @@ func TestReceiveURLAPI(t *testing.T) {
 			method: http.MethodPost,
 			body:   models.Request{URL: "https://practicum.yandex.ru"},
 			store: store.LinkStorage{
-				Store: map[string]string{},
+				Store: []store.Link{},
 			},
 			request:      "/api/shorten",
 			expectedCode: http.StatusCreated,
@@ -116,8 +117,12 @@ func TestGetURL(t *testing.T) {
 			name:    "positive test #1",
 			request: "/YjhkNDY",
 			store: store.LinkStorage{
-				Store: map[string]string{
-					"YjhkNDY": "https://practicum.yandex.ru/",
+				Store: []store.Link{
+					{
+						ID:          uuid.New(),
+						ShortURL:    "YjhkNDY",
+						OriginalURL: "https://practicum.yandex.ru/",
+					},
 				},
 			},
 			statusCode: http.StatusTemporaryRedirect,
@@ -126,8 +131,12 @@ func TestGetURL(t *testing.T) {
 			name:    "positive test #2",
 			request: "/" + util.Shorten("Y2NlMzI"),
 			store: store.LinkStorage{
-				Store: map[string]string{
-					util.Shorten("Y2NlMzI"): "Y2NlMzI",
+				Store: []store.Link{
+					{
+						ID:          uuid.New(),
+						ShortURL:    util.Shorten("Y2NlMzI"),
+						OriginalURL: "Y2NlMzI",
+					},
 				},
 			},
 			statusCode: http.StatusTemporaryRedirect,
@@ -136,7 +145,7 @@ func TestGetURL(t *testing.T) {
 			name:    "not found",
 			request: "/" + util.Shorten("asdasda"),
 			store: store.LinkStorage{
-				Store: map[string]string{},
+				Store: []store.Link{},
 			},
 			statusCode: http.StatusNotFound,
 		},
@@ -152,50 +161,50 @@ func TestGetURL(t *testing.T) {
 		assert.Equal(t, v.statusCode, resp.StatusCode)
 
 		if v.statusCode != http.StatusNotFound {
-			s := strings.Replace(v.request, "/", "", -1)
+			//s := strings.Replace(v.request, "/", "", -1)
 
-			assert.Equal(t, v.store.Store[s], resp.Header.Get("Location"))
+			assert.Equal(t, v.store.Store[0].OriginalURL, resp.Header.Get("Location"))
 		}
 	}
 }
 
 func TestReceiveURL(t *testing.T) {
 	tests := []struct {
-		name       string
-		request    string
-		store      store.LinkStorage
-		statusCode int
-		body       []byte
+		name         string
+		request      string
+		store        store.LinkStorage
+		statusCode   int
+		body         []byte
 		expectedBody string
 	}{
 		{
 			name:    "positive test #1",
 			request: "/",
 			store: store.LinkStorage{
-				Store: map[string]string{},
+				Store: []store.Link{},
 			},
-			statusCode: http.StatusCreated,
-			body:       []byte("https://practicum.yandex.ru/"),
+			statusCode:   http.StatusCreated,
+			body:         []byte("https://practicum.yandex.ru/"),
 			expectedBody: "http://localhost:8000/MGRkMTk",
 		},
 		{
 			name:    "positive test #2",
 			request: "/",
 			store: store.LinkStorage{
-				Store: map[string]string{},
+				Store: []store.Link{},
 			},
-			statusCode: http.StatusCreated,
-			body:       []byte("EwHXdJfB"),
+			statusCode:   http.StatusCreated,
+			body:         []byte("EwHXdJfB"),
 			expectedBody: "http://localhost:8000/ODczZGQ",
 		},
 		{
 			name:    "negative test",
 			request: "/",
 			store: store.LinkStorage{
-				Store: map[string]string{},
+				Store: []store.Link{},
 			},
-			statusCode: http.StatusCreated,
-			body:       []byte(""),
+			statusCode:   http.StatusCreated,
+			body:         []byte(""),
 			expectedBody: "http://localhost:8000/ZDQxZDh",
 		},
 	}

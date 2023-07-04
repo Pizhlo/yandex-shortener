@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string) {
+func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
 	fmt.Println("ReceiveURLAPI")
 	var req models.Request
 
@@ -29,7 +29,7 @@ func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Re
 
 	short := util.Shorten(req.URL)
 
-	storage.SaveLink(short, req.URL)
+	storage.SaveLink(short, req.URL, flag)
 
 	path, err := util.MakeURL(baseURL, short)
 	if err != nil {
@@ -65,7 +65,7 @@ func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Re
 
 }
 
-func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string) {
+func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
 	fmt.Println("ReceiveUrl")
 
 	// сократить ссылку
@@ -79,7 +79,7 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 
 	short := util.Shorten(string(j))
 
-	storage.SaveLink(short, string(j))
+	storage.SaveLink(short, string(j), flag)
 
 	path, err := util.MakeURL(baseURL, short)
 	if err != nil {
