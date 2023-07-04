@@ -68,6 +68,10 @@ func UnpackData(next http.Handler) http.Handler {
 			return
 		}
 
+		r.Body = gz
+
 		fmt.Fprintf(w, "Length: %d", len(body))
+
+		next.ServeHTTP(w, r)
 	})
 }
