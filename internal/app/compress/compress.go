@@ -46,31 +46,16 @@ func PackData(next http.Handler) http.Handler {
 func UnpackData(next http.Handler) http.Handler {
 	fmt.Println("UnpackData")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Content-Encoding"), "gzip") { // если клиент не сжимал данные, идем дальше
-			fmt.Println("UnpackData !strings.Contains")
-			next.ServeHTTP(w, r)
-			return
+		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			r.Body = gz
+			defer gz.Close()
 		}
-
-		gz, err := gzip.NewReader(r.Body)
-		if err != nil {
-			fmt.Println("gzip.NewReader err")
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		defer gz.Close()
-
-		body, err := io.ReadAll(gz)
-		if err != nil {
-			fmt.Println("io.ReadAll err")
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		r.Body = gz
-
-		fmt.Fprintf(w, "Length: %d", len(body))
 
 		next.ServeHTTP(w, r)
 	})
