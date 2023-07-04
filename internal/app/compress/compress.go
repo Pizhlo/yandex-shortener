@@ -28,12 +28,6 @@ func PackData(next http.Handler) http.Handler {
 			return
 		}
 
-		// if r.Header.Get("Content-Type") != "application/json" || r.Header.Get("Content-Type") != "text/html" {
-		// 	fmt.Println("PackData !r.Header.Get")
-		// 	next.ServeHTTP(w, r)
-		// 	return
-		// }
-
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
 			fmt.Println("NewWriterLevel error")
