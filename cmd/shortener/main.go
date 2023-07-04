@@ -43,7 +43,6 @@ func Run(conf config.Config) chi.Router {
 	r := chi.NewRouter()
 	r.Use(log.WithLogging)
 	r.Use(compress.UnpackData)
-	//r.Use(compress.PackData)
 
 	r.Use(middleware.Compress(5, "application/javascript",
 		"application/json",
