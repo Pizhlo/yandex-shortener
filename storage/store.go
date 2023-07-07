@@ -16,14 +16,20 @@ type Database struct {
 
 func NewStore(databaseAddr string) (*Database, error) {
 	var db *Database
-	conn, err := pgx.Connect(context.Background(), databaseAddr)
-	if err != nil {
-		return db, err
+	if databaseAddr != "" {
+
+		conn, err := pgx.Connect(context.Background(), databaseAddr)
+		if err != nil {
+			return db, err
+		}
+
+		db = &Database{conn}
+
+		return db, nil
 	}
 
-	db = &Database{conn}
-
 	return db, nil
+
 }
 
 func (db *Database) Ping() error {
