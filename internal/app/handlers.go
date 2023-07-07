@@ -9,6 +9,7 @@ import (
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
+	"github.com/Pizhlo/yandex-shortener/storage"
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
@@ -73,7 +74,7 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 
 	j, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -84,7 +85,7 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 	path, err := util.MakeURL(baseURL, short)
 	if err != nil {
 		fmt.Println("err: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -105,10 +106,19 @@ func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) 
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
+}
+
+func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database) {
+	// ping
+	err := db.Ping()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func setHeader(w http.ResponseWriter, header string, val string, statusCode int) {
