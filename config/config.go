@@ -16,6 +16,7 @@ type Config struct {
 	FlagPathToFile      string
 	FlagSaveToFile      bool
 	FlagDatabaseAddress string
+	FlagSaveToDB        bool
 }
 
 func ParseConfigAndFlags() Config {
@@ -39,6 +40,7 @@ func ParseConfigAndFlags() Config {
 	fmt.Println("FlagFileStorage = ", conf.FlagPathToFile)
 	fmt.Println("FlagSaveToFile = ", conf.FlagSaveToFile)
 	fmt.Println("FlagDatabaseAddress = ", conf.FlagDatabaseAddress)
+	fmt.Println("FlagSaveToDB = ", conf.FlagSaveToDB)
 
 	return conf
 }
@@ -66,10 +68,15 @@ func setupVariables(conf *Config, defaultHost string) {
 
 	if val, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		conf.FlagDatabaseAddress = val
+		conf.FlagSaveToDB = true
 	}
 
 	if conf.FlagPathToFile != "" {
 		conf.FlagSaveToFile = true
+	}
+
+	if conf.FlagDatabaseAddress != "" {
+		conf.FlagSaveToDB = true
 	}
 }
 

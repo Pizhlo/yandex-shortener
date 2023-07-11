@@ -11,6 +11,7 @@ import (
 
 	"github.com/Pizhlo/yandex-shortener/config"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
+	"github.com/Pizhlo/yandex-shortener/storage"
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/google/uuid"
@@ -18,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestReceiveURLAPI(t *testing.T) {
+func TestReceiveURLAPIFileStorage(t *testing.T) {
 	testCases := []struct {
 		name         string
 		method       string
@@ -44,13 +45,17 @@ func TestReceiveURLAPI(t *testing.T) {
 	}
 
 	conf := config.Config{
-		FlagSaveToFile: false,
+		FlagSaveToFile: true,
 		FlagSaveToDB:   false,
+		FlagPathToFile: "tmp/short-url-db-test.json",
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
 
 	for _, v := range testCases {
-		ts := httptest.NewServer(runTestServer(&v.store, conf, nil))
+		memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile)
+		require.NoError(t, err)
+
+		ts := httptest.NewServer(runTestServer(memory, conf, nil))
 		defer ts.Close()
 
 		bodyJSON, err := json.Marshal(v.body)
@@ -70,7 +75,7 @@ func TestReceiveURLAPI(t *testing.T) {
 	}
 }
 
-func TestGetURL(t *testing.T) {
+func TestGetURLFileStorage(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
@@ -79,12 +84,12 @@ func TestGetURL(t *testing.T) {
 	}{
 		{
 			name:    "positive test #1",
-			request: "/YjhkNDY",
+			request: "/MGRkMTk",
 			store: store.LinkStorage{
 				Store: []store.Link{
 					{
 						ID:          uuid.New(),
-						ShortURL:    "YjhkNDY",
+						ShortURL:    "MGRkMTk",
 						OriginalURL: "https://practicum.yandex.ru/",
 					},
 				},
@@ -93,13 +98,13 @@ func TestGetURL(t *testing.T) {
 		},
 		{
 			name:    "positive test #2",
-			request: "/" + util.Shorten("Y2NlMzI"),
+			request: "/" + util.Shorten("ODczZGQ"),
 			store: store.LinkStorage{
 				Store: []store.Link{
 					{
 						ID:          uuid.New(),
-						ShortURL:    util.Shorten("Y2NlMzI"),
-						OriginalURL: "Y2NlMzI",
+						ShortURL:    util.Shorten("ODczZGQ"),
+						OriginalURL: "EwHXdJfB",
 					},
 				},
 			},
@@ -115,13 +120,17 @@ func TestGetURL(t *testing.T) {
 		},
 	}
 	conf := config.Config{
-		FlagSaveToFile: false,
+		FlagSaveToFile: true,
 		FlagSaveToDB:   false,
+		FlagPathToFile: "tmp/short-url-db-test.json",
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
 
 	for _, v := range tests {
-		ts := httptest.NewServer(runTestServer(&v.store, conf, nil))
+		memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile)
+		require.NoError(t, err)
+
+		ts := httptest.NewServer(runTestServer(memory, conf, nil))
 		defer ts.Close()
 
 		resp := testRequest(t, ts, "GET", v.request, nil)
@@ -135,41 +144,31 @@ func TestGetURL(t *testing.T) {
 	}
 }
 
-func TestReceiveURL(t *testing.T) {
+func TestReceiveURLFileStorage(t *testing.T) {
 	tests := []struct {
 		name         string
 		request      string
-		store        store.LinkStorage
 		statusCode   int
 		body         []byte
 		expectedBody string
 	}{
 		{
-			name:    "positive test #1",
-			request: "/",
-			store: store.LinkStorage{
-				Store: []store.Link{},
-			},
+			name:         "positive test #1",
+			request:      "/",
 			statusCode:   http.StatusCreated,
 			body:         []byte("https://practicum.yandex.ru/"),
 			expectedBody: "http://localhost:8000/MGRkMTk",
 		},
 		{
-			name:    "positive test #2",
-			request: "/",
-			store: store.LinkStorage{
-				Store: []store.Link{},
-			},
+			name:         "positive test #2",
+			request:      "/",
 			statusCode:   http.StatusCreated,
 			body:         []byte("EwHXdJfB"),
 			expectedBody: "http://localhost:8000/ODczZGQ",
 		},
 		{
-			name:    "negative test",
-			request: "/",
-			store: store.LinkStorage{
-				Store: []store.Link{},
-			},
+			name:         "negative test",
+			request:      "/",
 			statusCode:   http.StatusCreated,
 			body:         []byte(""),
 			expectedBody: "http://localhost:8000/ZDQxZDh",
@@ -177,13 +176,17 @@ func TestReceiveURL(t *testing.T) {
 	}
 
 	conf := config.Config{
-		FlagSaveToFile: false,
+		FlagSaveToFile: true,
 		FlagSaveToDB:   false,
+		FlagPathToFile: "tmp/short-url-db-test.json",
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
 
 	for _, v := range tests {
-		ts := httptest.NewServer(runTestServer(&v.store, conf, nil))
+		memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile)
+		require.NoError(t, err)
+
+		ts := httptest.NewServer(runTestServer(memory, conf, nil))
 		defer ts.Close()
 
 		body := strings.NewReader(string(v.body))

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -11,7 +12,7 @@ type Store interface {
 }
 
 type Database struct {
-	postgreSQL *pgx.Conn
+	*pgx.Conn
 }
 
 func NewStore(databaseAddr string) (*Database, error) {
@@ -33,5 +34,24 @@ func NewStore(databaseAddr string) (*Database, error) {
 }
 
 func (db *Database) Ping() error {
-	return db.postgreSQL.Ping(context.Background())
+	return db.Ping()
+}
+
+func (db *Database) SaveLinkDB(ctx context.Context, link Link) error {
+	fmt.Println("SaveLinkDB")
+	return db.Ping()
+}
+
+func (db *Database) GetLinkByIDFromDB(ctx context.Context, short string) (string, error) {
+	fmt.Println("GetLinkByIDFromDB")
+	var originalURL string
+
+	row := db.QueryRow(ctx, `SELECT original_url from urls where short_url = $1`, short)
+
+	err := row.Scan(&originalURL)
+	if err != nil {
+		return originalURL, err
+	}
+
+	return originalURL, nil
 }

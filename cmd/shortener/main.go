@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Pizhlo/yandex-shortener/config"
@@ -34,6 +35,8 @@ func main() {
 		log.Sugar.Fatal("error while creating storage: ", zap.Error(err))
 	}
 
+	fmt.Println("memory = ", memory.FileStorage)
+
 	db, err := storage.NewStore(conf.FlagDatabaseAddress)
 	if err != nil {
 		log.Sugar.Fatal("error while connecting db: ", zap.Error(err))
@@ -61,18 +64,18 @@ func Run(conf config.Config, store *storage.LinkStorage, db *storage.Database) c
 		"text/xml"))
 
 	r.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
-		internal.GetURL(store, rw, r)
+		internal.GetURL(store, rw, r, conf, db)
 	})
 
 	r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		internal.ReceiveURL(store, rw, r, conf.FlagBaseAddr, conf.FlagSaveToFile)
+		internal.ReceiveURL(store, rw, r, conf, db)
 	})
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AllowContentType("application/json"))
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
-				internal.ReceiveURLAPI(store, rw, r, conf.FlagBaseAddr, conf.FlagSaveToFile)
+				internal.ReceiveURLAPI(store, rw, r, conf, db)
 			})
 		})
 	})

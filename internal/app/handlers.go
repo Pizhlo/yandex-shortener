@@ -1,12 +1,15 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
+	"github.com/Pizhlo/yandex-shortener/config"
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	"github.com/Pizhlo/yandex-shortener/storage"
@@ -15,25 +18,26 @@ import (
 	"go.uber.org/zap"
 )
 
-func ReceiveURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
+func ReceiveURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
 	fmt.Println("ReceiveURLAPI")
 	var req models.Request
 
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
-		fmt.Println("Decode err = ", err)
 		log.Sugar.Debug("cannot decode request JSON body", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
 	short := util.Shorten(req.URL)
 
-	memory.SaveLink(short, req.URL, flag)
+	memory.SaveLink(ctx, short, req.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
 
-	path, err := util.MakeURL(baseURL, short)
+	path, err := util.MakeURL(conf.FlagBaseAddr, short)
 	if err != nil {
-		fmt.Println("path err = ", err)
 		log.Sugar.Debug("cannot make path", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -65,7 +69,7 @@ func ReceiveURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.R
 
 }
 
-func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
+func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
 	fmt.Println("ReceiveUrl")
 
 	// сократить ссылку
@@ -79,9 +83,12 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 
 	short := util.Shorten(string(j))
 
-	memory.SaveLink(short, string(j), flag)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
 
-	path, err := util.MakeURL(baseURL, short)
+	memory.SaveLink(ctx, short, string(j), conf.FlagSaveToFile, conf.FlagSaveToDB, db)
+
+	path, err := util.MakeURL(conf.FlagBaseAddr, short)
 	if err != nil {
 		fmt.Println("err: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -92,20 +99,24 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 	w.Write([]byte(path))
 }
 
-func GetURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request) {
+func GetURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
 	fmt.Println("GetUrl")
 
 	// проверить наличие ссылки в базе
 	// выдать ссылку
 
 	id := chi.URLParam(r, "id")
-	val, err := memory.GetLinkByID(id)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	val, err := memory.GetLinkByID(ctx, id, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	setHeader(w, "Location", val, http.StatusTemporaryRedirect)

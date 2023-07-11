@@ -1,0 +1,11 @@
+services:
+  db:
+    container_name: shortener
+    image: postgres:15-bullseye
+    restart: always
+    environment:
+      POSTGRES_DB: shortener
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    ports:
+      - "8081:5432"
