@@ -17,6 +17,8 @@ var ErrNotFound = errors.New("not found")
 
 func New(flag bool, filename string) (*LinkStorage, error) {
 	linkStorage := &LinkStorage{}
+	linkStorage.Store = []Link{}
+	
 	if flag {
 		fileStorage, err := NewFileStorage(filename)
 		if err != nil {
@@ -27,7 +29,7 @@ func New(flag bool, filename string) (*LinkStorage, error) {
 			return linkStorage, err
 		}
 	}
-	linkStorage.Store = []Link{}
+	
 	return linkStorage, nil
 }
 

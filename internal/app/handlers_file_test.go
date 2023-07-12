@@ -97,7 +97,7 @@ func TestGetURLFileStorage(t *testing.T) {
 			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
-			name:    "positive test #2",
+			name:    "not found",
 			request: "/" + util.Shorten("ODczZGQ"),
 			store: store.LinkStorage{
 				Store: []store.Link{
@@ -108,7 +108,7 @@ func TestGetURLFileStorage(t *testing.T) {
 					},
 				},
 			},
-			statusCode: http.StatusTemporaryRedirect,
+			statusCode: http.StatusNotFound,
 		},
 		{
 			name:    "not found",
