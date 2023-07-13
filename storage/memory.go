@@ -68,8 +68,9 @@ func (s *LinkStorage) SaveLink(ctx context.Context, shortURL, originalURL string
 
 	link := makeLinkModel(shortURL, originalURL)
 
+	s.Store = append(s.Store, link)
+
 	if flagSaveToFile {
-		s.Store = append(s.Store, link)
 		return s.FileStorage.SaveDataToFile(link)
 	} else if flagSaveToDB {
 		return db.SaveLinkDB(ctx, link)
