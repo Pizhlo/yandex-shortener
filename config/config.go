@@ -66,8 +66,10 @@ func setupVariables(conf *Config, defaultHost string) {
 
 	val, ok := os.LookupEnv("FILE_STORAGE_PATH")
 	if ok {
-		if conf.FlagPathToFile == "" || val == "" {
+		if conf.FlagPathToFile == "" && val == "" {
 			conf.FlagPathToFile = "/tmp/short-url-db.json"
+		} else {
+			conf.FlagPathToFile = val
 		}
 	}
 
