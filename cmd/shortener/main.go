@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Pizhlo/yandex-shortener/config"
@@ -34,8 +33,6 @@ func main() {
 	if err != nil {
 		log.Sugar.Fatal("error while creating storage: ", zap.Error(err))
 	}
-
-	fmt.Println("memory = ", memory.FileStorage)
 
 	db, err := storage.NewStore(conf.FlagDatabaseAddress)
 	if err != nil {

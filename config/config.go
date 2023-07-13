@@ -25,7 +25,7 @@ func ParseConfigAndFlags() Config {
 	flag.StringVar(&conf.FlagRunAddr, "a", ":8080", "address and port to run server")
 	flag.StringVar(&conf.FlagBaseAddr, "b", "http://localhost:8080", "base address for urls")
 	flag.StringVar(&conf.FlagLogLevel, "l", "info", "log level")
-	flag.StringVar(&conf.FlagPathToFile, "f", "/tmp/short-url-db.json", "file to save short urls")
+	flag.StringVar(&conf.FlagPathToFile, "f", "", "file to save short urls")
 	flag.StringVar(&conf.FlagDatabaseAddress, "d", "", "database address")
 
 	flag.Parse()
@@ -62,8 +62,11 @@ func setupVariables(conf *Config, defaultHost string) {
 		conf.FlagLogLevel = val
 	}
 
-	if val, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		conf.FlagPathToFile = val
+	val, ok := os.LookupEnv("FILE_STORAGE_PATH")
+	if ok {
+		if conf.FlagPathToFile == "" || val == "" {
+			conf.FlagPathToFile = "/tmp/short-url-db.json"
+		}
 	}
 
 	if val, ok := os.LookupEnv("DATABASE_DSN"); ok {
