@@ -75,6 +75,10 @@ func Run(conf config.Config, store *storage.LinkStorage, db *storage.Database) c
 				internal.ReceiveURLAPI(store, rw, r, conf, db)
 			})
 
+			r.Post("/test", func(rw http.ResponseWriter, r *http.Request) {
+				internal.ReceiveManyURLAPI(store, rw, r, conf, db)
+			})
+
 			r.Post("/batch", func(rw http.ResponseWriter, r *http.Request) {
 				internal.ReceiveManyURLAPI(store, rw, r, conf, db)
 			})

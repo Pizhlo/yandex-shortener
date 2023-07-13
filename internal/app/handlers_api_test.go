@@ -85,44 +85,47 @@ func TestReceiveManyURLAPI(t *testing.T) {
 			name: "positive test without DB",
 			args: args{
 				memory:       &store.LinkStorage{},
-				method:       "post",
+				method:       http.MethodPost,
 				request:      "/api/batch",
 				expectedCode: http.StatusCreated,
 				conf:         config.Config{FlagPathToFile: "tmp/short-url-db-test.json", FlagSaveToFile: true},
-				db:           nil,
+				db:           &store.Database{},
 				body: []models.RequestAPI{
 					{
-						ID:  "a293b415-7f49-4f3d-ab12-c081ee691924",
-						URL: "https://practicum222.yandex.ru",
+						ID:  "e169d217-d3c8-493a-930f-7432368139c7",
+						URL: "mail2.ru",
 					},
 					{
-						ID:  "1bcd1369-9da2-43cd-b68f-1ec8329cc86b",
+						ID:  "c82b937d-c303-40e1-a655-ab085002dfa0",
 						URL: "https://practicum.yandex.ru",
 					},
 					{
-						ID:  "11d48cc2-ea84-44a0-9814-7045e9cb551d",
-						URL: "https://practicum333.yandex.ru",
+						ID:  "cd53c344-fb57-42cf-b576-823476f90918",
+						URL: "EwHXdJfB",
 					}},
 
 				expectedBody: []models.ResponseAPI{
 					{
-						ID:       "a293b415-7f49-4f3d-ab12-c081ee691924",
-						ShortURL: "N2YzM2Y",
+						ID:       "e169d217-d3c8-493a-930f-7432368139c7",
+						ShortURL: "NjYyNjB",
 					},
 					{
-						ID:       "1bcd1369-9da2-43cd-b68f-1ec8329cc86b",
+						ID:       "c82b937d-c303-40e1-a655-ab085002dfa0",
 						ShortURL: "NmJkYjV",
 					},
 					{
-						ID:       "11d48cc2-ea84-44a0-9814-7045e9cb551d",
-						ShortURL: "NjRiNjg",
+						ID:       "cd53c344-fb57-42cf-b576-823476f90918",
+						ShortURL: "ODczZGQ",
 					}},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := httptest.NewServer(runTestServer(tt.args.memory, tt.args.conf, tt.args.db))
+			memory, err := store.New(tt.args.conf.FlagSaveToFile, tt.args.conf.FlagPathToFile)
+			require.NoError(t, err)
+
+			ts := httptest.NewServer(runTestServer(memory, tt.args.conf, tt.args.db))
 			defer ts.Close()
 
 			bodyJSON, err := json.Marshal(tt.args.body)
@@ -134,6 +137,7 @@ func TestReceiveManyURLAPI(t *testing.T) {
 			assert.Equal(t, tt.args.expectedCode, resp.StatusCode)
 
 			var result []models.ResponseAPI
+
 			dec := json.NewDecoder(resp.Body)
 			err = dec.Decode(&result)
 			require.NoError(t, err)

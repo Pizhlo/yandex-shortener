@@ -46,6 +46,10 @@ func runTestServer(storage *store.LinkStorage, conf config.Config, db *store.Dat
 		r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
 			ReceiveURLAPI(storage, rw, r, conf, db)
 		})
+	
+		r.Post("/batch", func(rw http.ResponseWriter, r *http.Request) {
+			ReceiveManyURLAPI(storage, rw, r, conf, db)
+		})
 	})
 
 	return router
