@@ -102,7 +102,7 @@ func ReceiveManyURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *ht
 
 	}
 
-	setHeader(w, "Content-Type", "text/plain; charset=utf-8", http.StatusCreated)
+	setHeader(w, "Content-Type", "application/json", http.StatusCreated)
 
 	respJSON, err := json.Marshal(responseArr)
 	if err != nil {

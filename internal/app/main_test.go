@@ -42,13 +42,16 @@ func runTestServer(storage *store.LinkStorage, conf config.Config, db *store.Dat
 	router.Post("/", func(rw http.ResponseWriter, r *http.Request) {
 		ReceiveURL(storage, rw, r, conf, db)
 	})
-	router.Route("/api", func(r chi.Router) {
-		r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
-			ReceiveURLAPI(storage, rw, r, conf, db)
-		})
-	
-		r.Post("/batch", func(rw http.ResponseWriter, r *http.Request) {
-			ReceiveManyURLAPI(storage, rw, r, conf, db)
+
+	router.Group(func(r chi.Router) {
+		r.Route("/api", func(r chi.Router) {
+			r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
+				ReceiveURLAPI(storage, rw, r, conf, db)
+			})
+
+			r.Post("/shorten/batch", func(rw http.ResponseWriter, r *http.Request) {
+				ReceiveManyURLAPI(storage, rw, r, conf, db)
+			})
 		})
 	})
 

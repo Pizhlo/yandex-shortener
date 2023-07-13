@@ -86,7 +86,7 @@ func TestReceiveManyURLAPI(t *testing.T) {
 			args: args{
 				memory:       &store.LinkStorage{},
 				method:       http.MethodPost,
-				request:      "/api/batch",
+				request:      "/api/shorten/batch",
 				expectedCode: http.StatusCreated,
 				conf:         config.Config{FlagPathToFile: "tmp/short-url-db-test.json", FlagSaveToFile: true},
 				db:           &store.Database{},
