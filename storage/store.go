@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -26,11 +27,28 @@ func NewStore(databaseAddr string) (*Database, error) {
 
 		db = &Database{conn}
 
-		return db, nil
+		return db, db.createTableURLs()
 	}
 
 	return db, nil
 
+}
+
+func (db *Database) createTableURLs() error {
+	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
+	defer cancel()
+
+	q := `CREATE TABLE IF NOT EXISTS urls(id uuid NOT NULL,
+		short_url text NOT NULL,
+		original_url text NOT NULL
+	);`
+
+	_, err := db.Exec(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (db *Database) Ping() error {
