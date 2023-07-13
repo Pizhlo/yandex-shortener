@@ -61,12 +61,15 @@ func (s *LinkStorage) GetLinkByID(ctx context.Context, shortURL string, flagSave
 	return "", ErrNotFound
 }
 
-func (s *LinkStorage) SaveLink(ctx context.Context, shortURL, originalURL string, flagSaveToFile bool, flagSaveToDB bool, db *Database) error {
+func (s *LinkStorage) SaveLink(ctx context.Context, id, shortURL, originalURL string, flagSaveToFile bool, flagSaveToDB bool, db *Database) error {
 	fmt.Println("SaveLink")
 
 	fmt.Println("shortURL = ", shortURL, "original URL = ", originalURL)
 
-	link := makeLinkModel(shortURL, originalURL)
+	link, err := makeLinkModel(id, shortURL, originalURL)
+	if err != nil {
+		return err
+	}
 
 	s.Store = append(s.Store, link)
 
@@ -79,12 +82,24 @@ func (s *LinkStorage) SaveLink(ctx context.Context, shortURL, originalURL string
 	return nil
 }
 
-func makeLinkModel(shortURL, originalURL string) Link {
+func makeLinkModel(id, shortURL, originalURL string) (Link, error) {
+	var realID uuid.UUID
+	var err error
+
+	if id == "" { // если запрос пришел через /shorten/batch, id уже есть, если нет - надо сгенерировать
+		realID = uuid.New()
+	} else {
+		realID, err = uuid.Parse(id)
+		if err != nil {
+			return Link{}, err
+		}
+	}
+
 	link := Link{
-		ID:          uuid.New(),
+		ID:          realID,
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
 	}
 
-	return link
+	return link, nil
 }

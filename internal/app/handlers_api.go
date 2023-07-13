@@ -30,7 +30,7 @@ func ReceiveURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.R
 
 	short := util.Shorten(req.URL)
 
-	err := memory.SaveLink(ctx, short, req.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
+	err := memory.SaveLink(ctx, "", short, req.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -87,7 +87,7 @@ func ReceiveManyURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *ht
 
 	for _, val := range requestArr {
 		short := util.Shorten(val.URL)
-		err := memory.SaveLink(ctx, short, val.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
+		err := memory.SaveLink(ctx, val.ID, short, val.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return

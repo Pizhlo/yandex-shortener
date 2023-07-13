@@ -31,7 +31,7 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	memory.SaveLink(ctx, short, string(j), conf.FlagSaveToFile, conf.FlagSaveToDB, db)
+	memory.SaveLink(ctx, "", short, string(j), conf.FlagSaveToFile, conf.FlagSaveToDB, db)
 
 	path, err := util.MakeURL(conf.FlagBaseAddr, short)
 	if err != nil {
