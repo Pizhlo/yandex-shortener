@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -87,6 +88,9 @@ func (db *Database) GetLinkByIDFromDB(ctx context.Context, short string) (string
 	err := row.Scan(&originalURL)
 	if err != nil {
 		fmt.Println("GetLinkByIDFromDB err = ", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return originalURL, ErrNotFound
+		}
 		return originalURL, err
 	}
 

@@ -32,8 +32,6 @@ func ParseConfigAndFlags() Config {
 
 	defaultHost := formatDefaultHost(conf.FlagBaseAddr)
 
-	fmt.Println("FlagPathToFile before setupVariables = ", conf.FlagPathToFile)
-
 	setupVariables(&conf, defaultHost)
 
 	fmt.Println("FlagRunAddr = ", conf.FlagRunAddr)

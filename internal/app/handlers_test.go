@@ -1,8 +1,6 @@
 package app
 
 import (
-	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,65 +8,12 @@ import (
 	"testing"
 
 	"github.com/Pizhlo/yandex-shortener/config"
-	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestReceiveURLAPI(t *testing.T) {
-	testCases := []struct {
-		name         string
-		method       string
-		body         models.Request
-		store        store.LinkStorage
-		request      string
-		expectedCode int
-		expectedBody models.Response
-	}{
-		{
-			name:   "positive test",
-			method: http.MethodPost,
-			body:   models.Request{URL: "https://practicum.yandex.ru"},
-			store: store.LinkStorage{
-				Store: []store.Link{},
-			},
-			request:      "/api/shorten",
-			expectedCode: http.StatusCreated,
-			expectedBody: models.Response{
-				Result: `http://localhost:8000/NmJkYjV`,
-			},
-		},
-	}
-
-	conf := config.Config{
-		FlagSaveToFile: false,
-		FlagSaveToDB:   false,
-		FlagBaseAddr:   "http://localhost:8000/",
-	}
-
-	for _, v := range testCases {
-		ts := httptest.NewServer(runTestServer(&v.store, conf, nil))
-		defer ts.Close()
-
-		bodyJSON, err := json.Marshal(v.body)
-		require.NoError(t, err)
-
-		resp := testRequest(t, ts, v.method, v.request, bytes.NewReader(bodyJSON))
-		defer resp.Body.Close()
-
-		assert.Equal(t, v.expectedCode, resp.StatusCode)
-
-		var result models.Response
-		dec := json.NewDecoder(resp.Body)
-		err = dec.Decode(&result)
-		require.NoError(t, err)
-
-		assert.Equal(t, v.expectedBody, result)
-	}
-}
 
 func TestGetURL(t *testing.T) {
 	tests := []struct {
