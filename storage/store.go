@@ -34,7 +34,7 @@ func NewStore(databaseAddr string) (*Database, error) {
 }
 
 func (db *Database) Ping() error {
-	return db.Ping()
+	return db.PgConn().Ping(context.TODO())
 }
 
 func (db *Database) SaveLinkDB(ctx context.Context, link Link) error {
