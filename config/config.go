@@ -30,6 +30,8 @@ func ParseConfigAndFlags() Config {
 
 	flag.Parse()
 
+	fmt.Println("FlagPathToFile after parse = ", conf.FlagPathToFile)
+
 	defaultHost := formatDefaultHost(conf.FlagBaseAddr)
 
 	setupVariables(&conf, defaultHost)
@@ -37,7 +39,7 @@ func ParseConfigAndFlags() Config {
 	fmt.Println("FlagRunAddr = ", conf.FlagRunAddr)
 	fmt.Println("FlagBaseAddr = ", conf.FlagBaseAddr)
 	fmt.Println("FlagLogLevel = ", conf.FlagLogLevel)
-	fmt.Println("FlagFileStorage = ", conf.FlagPathToFile)
+	fmt.Println("FlagPathToFile = ", conf.FlagPathToFile)
 	fmt.Println("FlagSaveToFile = ", conf.FlagSaveToFile)
 	fmt.Println("FlagDatabaseAddress = ", conf.FlagDatabaseAddress)
 	fmt.Println("FlagSaveToDB = ", conf.FlagSaveToDB)
