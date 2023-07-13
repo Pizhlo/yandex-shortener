@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/Pizhlo/yandex-shortener/config"
-	"github.com/Pizhlo/yandex-shortener/storage"
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/require"
@@ -34,7 +33,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 	return resp
 }
 
-func runTestServer(storage *store.LinkStorage, conf config.Config, db *storage.Database) chi.Router {
+func runTestServer(storage *store.LinkStorage, conf config.Config, db *store.Database) chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {

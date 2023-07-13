@@ -11,7 +11,6 @@ import (
 
 	"github.com/Pizhlo/yandex-shortener/config"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
-	"github.com/Pizhlo/yandex-shortener/storage"
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/google/uuid"
@@ -52,7 +51,7 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 	}
 
 	for _, v := range testCases {
-		memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile)
+		memory, err := store.New(conf.FlagSaveToFile, conf.FlagPathToFile)
 		require.NoError(t, err)
 
 		ts := httptest.NewServer(runTestServer(memory, conf, nil))
@@ -127,7 +126,7 @@ func TestGetURLFileStorage(t *testing.T) {
 	}
 
 	for _, v := range tests {
-		memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile)
+		memory, err := store.New(conf.FlagSaveToFile, conf.FlagPathToFile)
 		require.NoError(t, err)
 
 		ts := httptest.NewServer(runTestServer(memory, conf, nil))
@@ -183,7 +182,7 @@ func TestReceiveURLFileStorage(t *testing.T) {
 	}
 
 	for _, v := range tests {
-		memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile)
+		memory, err := store.New(conf.FlagSaveToFile, conf.FlagPathToFile)
 		require.NoError(t, err)
 
 		ts := httptest.NewServer(runTestServer(memory, conf, nil))
