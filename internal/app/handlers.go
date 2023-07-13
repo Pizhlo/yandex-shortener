@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,64 +9,10 @@ import (
 	"time"
 
 	"github.com/Pizhlo/yandex-shortener/config"
-	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
-	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	"github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
-
-func ReceiveURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
-	fmt.Println("ReceiveURLAPI")
-	var req models.Request
-
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&req); err != nil {
-		log.Sugar.Debug("cannot decode request JSON body", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
-
-	short := util.Shorten(req.URL)
-
-	memory.SaveLink(ctx, short, req.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
-
-	path, err := util.MakeURL(conf.FlagBaseAddr, short)
-	if err != nil {
-		log.Sugar.Debug("cannot make path", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	resp := models.Response{
-		Result: path,
-	}
-
-	setHeader(w, "Content-Type", "application/json", http.StatusCreated)
-
-	respJSON, err := json.Marshal(resp)
-	if err != nil {
-		fmt.Println("Marshal err = ", err)
-		log.Sugar.Debug("cannot Marshal resp", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, err = w.Write(respJSON)
-	if err != nil {
-		fmt.Println("Write err = ", err)
-		log.Sugar.Debug("cannot Write resp", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Println("respJSON = ", string(respJSON))
-
-}
 
 func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
 	fmt.Println("ReceiveUrl")

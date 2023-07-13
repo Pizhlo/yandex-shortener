@@ -43,12 +43,21 @@ func (db *Database) createTableURLs() error {
 		original_url text NOT NULL
 	);`
 
-	_, err := db.Exec(ctx, q)
+	txOptions := pgx.TxOptions{
+		IsoLevel: pgx.ReadCommitted,
+	}
+
+	tx, err := db.BeginTx(ctx, txOptions)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	tx.Exec(ctx, q)
+	defer tx.Rollback(ctx)
+
+
+
+	return tx.Commit(ctx)
 }
 
 func (db *Database) Ping() error {

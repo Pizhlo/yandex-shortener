@@ -74,6 +74,10 @@ func Run(conf config.Config, store *storage.LinkStorage, db *storage.Database) c
 			r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
 				internal.ReceiveURLAPI(store, rw, r, conf, db)
 			})
+
+			r.Post("/batch", func(rw http.ResponseWriter, r *http.Request) {
+				internal.ReceiveManyURLAPI(store, rw, r, conf, db)
+			})
 		})
 	})
 
