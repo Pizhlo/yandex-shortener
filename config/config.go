@@ -30,9 +30,9 @@ func ParseConfigAndFlags() Config {
 
 	flag.Parse()
 
-	fmt.Println("FlagPathToFile after parse = ", conf.FlagPathToFile)
-
 	defaultHost := formatDefaultHost(conf.FlagBaseAddr)
+
+	fmt.Println("FlagPathToFile before setupVariables = ", conf.FlagPathToFile)
 
 	setupVariables(&conf, defaultHost)
 
@@ -69,7 +69,7 @@ func setupVariables(conf *Config, defaultHost string) {
 		if conf.FlagPathToFile == "" || val == "" {
 			conf.FlagPathToFile = "/tmp/short-url-db.json"
 		}
-	} 
+	}
 
 	if val, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		conf.FlagDatabaseAddress = val
