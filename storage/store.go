@@ -68,6 +68,8 @@ func (db *Database) Ping() error {
 func (db *Database) SaveLinkDB(ctx context.Context, link Link) error {
 	fmt.Println("SaveLinkDB")
 
+	fmt.Printf("INSERT INTO urls (id, short_url, original_url) VALUES(%s, %s, %s)\n", link.ID, link.ShortURL, link.OriginalURL)
+
 	q := `INSERT INTO urls (id, short_url, original_url) VALUES($1, $2, $3)`
 
 	_, err := db.Exec(ctx, q, link.ID, link.ShortURL, link.OriginalURL)
