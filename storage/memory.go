@@ -44,6 +44,9 @@ func (s *LinkStorage) RecoverData() error {
 
 func (s *LinkStorage) GetLinkByID(ctx context.Context, shortURL string, flagSaveToFile bool, flagSaveToDB bool, db *Database) (string, error) {
 	fmt.Println("GetLinkByID")
+
+	fmt.Println("shortURL = ", shortURL)
+
 	if flagSaveToDB {
 		return db.GetLinkByIDFromDB(ctx, shortURL)
 	}
@@ -58,6 +61,8 @@ func (s *LinkStorage) GetLinkByID(ctx context.Context, shortURL string, flagSave
 
 func (s *LinkStorage) SaveLink(ctx context.Context, shortURL, originalURL string, flagSaveToFile bool, flagSaveToDB bool, db *Database) error {
 	fmt.Println("SaveLink")
+
+	fmt.Println("shortURL = ", shortURL, "original URL = ", originalURL)
 
 	link := makeLinkModel(shortURL, originalURL)
 

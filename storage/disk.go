@@ -62,6 +62,8 @@ func (f *FileStorage) RecoverData() ([]Link, error) {
 func (f *FileStorage) SaveDataToFile(link Link) error {
 	fmt.Println("SaveDataToFile")
 
+	fmt.Printf("link: %#v\n", link)
+
 	return f.encoder.Encode(&link)
 }
 

@@ -107,6 +107,8 @@ func GetURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request,
 
 	id := chi.URLParam(r, "id")
 
+	fmt.Println("url = ", id)
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
