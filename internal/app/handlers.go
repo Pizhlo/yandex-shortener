@@ -9,13 +9,13 @@ import (
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
-	store "github.com/Pizhlo/yandex-shortener/storage"
+	"github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
 )
 
-func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
+func ReceiveURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
 	fmt.Println("ReceiveURLAPI")
 	var req models.Request
 
@@ -29,7 +29,7 @@ func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Re
 
 	short := util.Shorten(req.URL)
 
-	storage.SaveLink(short, req.URL, flag)
+	memory.SaveLink(short, req.URL, flag)
 
 	path, err := util.MakeURL(baseURL, short)
 	if err != nil {
@@ -65,7 +65,7 @@ func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Re
 
 }
 
-func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
+func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
 	fmt.Println("ReceiveUrl")
 
 	// сократить ссылку
@@ -73,18 +73,18 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 
 	j, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	short := util.Shorten(string(j))
 
-	storage.SaveLink(short, string(j), flag)
+	memory.SaveLink(short, string(j), flag)
 
 	path, err := util.MakeURL(baseURL, short)
 	if err != nil {
 		fmt.Println("err: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -92,23 +92,32 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 	w.Write([]byte(path))
 }
 
-func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) {
+func GetURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetUrl")
 
 	// проверить наличие ссылки в базе
 	// выдать ссылку
 
 	id := chi.URLParam(r, "id")
-	val, err := storage.GetLinkByID(id)
+	val, err := memory.GetLinkByID(id)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, storage.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
+}
+
+func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database) {
+	// ping
+	err := db.Ping()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func setHeader(w http.ResponseWriter, header string, val string, statusCode int) {
