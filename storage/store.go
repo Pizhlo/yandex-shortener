@@ -57,7 +57,16 @@ func (db *Database) Ping() error {
 
 func (db *Database) SaveLinkDB(ctx context.Context, link Link) error {
 	fmt.Println("SaveLinkDB")
-	return db.Ping()
+
+	q := `INSERT INTO urls (id, short_url, original_url) VALUES($1, $2, $3)`
+
+	_, err := db.Exec(ctx, q, link.ID, link.ShortURL, link.OriginalURL)
+	if err != nil {
+		fmt.Println("SaveLinkDB err = ", err)
+		return err
+	}
+
+	return nil
 }
 
 func (db *Database) GetLinkByIDFromDB(ctx context.Context, short string) (string, error) {
@@ -68,6 +77,7 @@ func (db *Database) GetLinkByIDFromDB(ctx context.Context, short string) (string
 
 	err := row.Scan(&originalURL)
 	if err != nil {
+		fmt.Println("GetLinkByIDFromDB err = ", err)
 		return originalURL, err
 	}
 
