@@ -124,13 +124,19 @@ func GetURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request,
 	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
 }
 
-func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database) {
+func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database, flagDB bool) {
 	// ping
-	err := db.Ping()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	if flagDB {
+		err := db.Ping()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusForbidden)
 	}
-	w.WriteHeader(http.StatusOK)
+
 }
 
 func setHeader(w http.ResponseWriter, header string, val string, statusCode int) {

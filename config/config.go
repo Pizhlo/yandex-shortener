@@ -67,11 +67,7 @@ func setupVariables(conf *Config, defaultHost string) {
 		if conf.FlagPathToFile == "" || val == "" {
 			conf.FlagPathToFile = "/tmp/short-url-db.json"
 		}
-	} else {
-		if conf.FlagPathToFile == "" {
-			conf.FlagPathToFile = "/tmp/short-url-db.json"
-		}
-	}
+	} 
 
 	if val, ok := os.LookupEnv("DATABASE_DSN"); ok {
 		conf.FlagDatabaseAddress = val

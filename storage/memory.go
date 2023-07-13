@@ -18,7 +18,7 @@ var ErrNotFound = errors.New("not found")
 func New(flag bool, filename string) (*LinkStorage, error) {
 	linkStorage := &LinkStorage{}
 	linkStorage.Store = []Link{}
-	
+
 	if flag {
 		fileStorage, err := NewFileStorage(filename)
 		if err != nil {
@@ -29,7 +29,7 @@ func New(flag bool, filename string) (*LinkStorage, error) {
 			return linkStorage, err
 		}
 	}
-	
+
 	return linkStorage, nil
 }
 
@@ -46,10 +46,12 @@ func (s *LinkStorage) GetLinkByID(ctx context.Context, shortURL string, flagSave
 	fmt.Println("GetLinkByID")
 
 	fmt.Println("shortURL = ", shortURL)
+	fmt.Println("s.Store = ", s.Store)
 
 	if flagSaveToDB {
 		return db.GetLinkByIDFromDB(ctx, shortURL)
 	}
+
 	for _, val := range s.Store {
 		if val.ShortURL == shortURL {
 			return val.OriginalURL, nil
@@ -67,11 +69,10 @@ func (s *LinkStorage) SaveLink(ctx context.Context, shortURL, originalURL string
 	link := makeLinkModel(shortURL, originalURL)
 
 	if flagSaveToFile {
+		s.Store = append(s.Store, link)
 		return s.FileStorage.SaveDataToFile(link)
 	} else if flagSaveToDB {
 		return db.SaveLinkDB(ctx, link)
-	} else {
-		s.Store = append(s.Store, link)
 	}
 
 	return nil

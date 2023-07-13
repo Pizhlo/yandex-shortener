@@ -78,7 +78,7 @@ func Run(conf config.Config, store *storage.LinkStorage, db *storage.Database) c
 	})
 
 	r.Get("/ping", func(rw http.ResponseWriter, r *http.Request) {
-		internal.Ping(rw, r, db)
+		internal.Ping(rw, r, db, conf.FlagSaveToDB)
 	})
 
 	return r
