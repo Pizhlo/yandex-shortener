@@ -92,10 +92,17 @@ func ReceiveManyURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *ht
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		
+		path, err := util.MakeURL(conf.FlagBaseAddr, short)
+		if err != nil {
+			fmt.Println("cannot make path", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		resp := models.ResponseAPI{
 			ID:       val.ID,
-			ShortURL: short,
+			ShortURL: path,
 		}
 
 		responseArr = append(responseArr, resp)
