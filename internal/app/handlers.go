@@ -28,6 +28,7 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 
 	statusCode := http.StatusCreated
 	var shortURL string
+	shortURL = util.Shorten(string(j))
 
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
@@ -42,8 +43,6 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 				return
 			}
 		}
-	} else {
-		shortURL = util.Shorten(string(j))
 	}
 
 	path, err := util.MakeURL(conf.FlagBaseAddr, shortURL)
