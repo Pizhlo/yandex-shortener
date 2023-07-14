@@ -37,6 +37,7 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 			statusCode = http.StatusConflict
 
 		}
+		fmt.Println("ReceiveUrl SaveLink err = ", err)
 	}
 
 	fmt.Println("code = ", statusCode)
