@@ -26,21 +26,34 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	short := util.Shorten(string(j))
+	statusCode := http.StatusCreated
+	var shortURL string
 
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	memory.SaveLink(ctx, "", short, string(j), conf.FlagSaveToFile, conf.FlagSaveToDB, db)
+	if err := memory.SaveLink(ctx, "", shortURL, string(j), conf.FlagSaveToFile, conf.FlagSaveToDB, db); err != nil {
+		if err.Error() == uniqueViolation {
+			statusCode = http.StatusConflict
 
-	path, err := util.MakeURL(conf.FlagBaseAddr, short)
+			shortURL, err = db.GetShortURL(ctx, string(j))
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+	} else {
+		shortURL = util.Shorten(string(j))
+	}
+
+	path, err := util.MakeURL(conf.FlagBaseAddr, shortURL)
 	if err != nil {
 		fmt.Println("err: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	setHeader(w, "Content-Type", "text/plain", http.StatusCreated)
+	setHeader(w, "Content-Type", "text/plain", statusCode)
 	w.Write([]byte(path))
 }
 
