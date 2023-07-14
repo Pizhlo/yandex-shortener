@@ -27,8 +27,7 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 	}
 
 	statusCode := http.StatusCreated
-	var shortURL string
-	shortURL = util.Shorten(string(j))
+	shortURL := util.Shorten(string(j))
 
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
@@ -37,13 +36,10 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 		if err.Error() == uniqueViolation {
 			statusCode = http.StatusConflict
 
-			shortURL, err = db.GetShortURL(ctx, string(j))
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
 		}
 	}
+
+	fmt.Println("code = ", statusCode)
 
 	path, err := util.MakeURL(conf.FlagBaseAddr, shortURL)
 	if err != nil {

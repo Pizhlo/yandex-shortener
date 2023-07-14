@@ -66,9 +66,9 @@ func (db *Database) Ping() error {
 func (db *Database) SaveLinkDB(ctx context.Context, link Link) error {
 	fmt.Println("SaveLinkDB")
 
-	fmt.Printf("INSERT INTO urls (id, short_url, original_url) VALUES(%s, %s, %s) ON CONFLICT (original_url) DO NOTHING\n", link.ID, link.ShortURL, link.OriginalURL)
+	fmt.Printf("INSERT INTO urls (id, short_url, original_url) VALUES(%s, %s, %s)\n", link.ID, link.ShortURL, link.OriginalURL)
 
-	q := `INSERT INTO urls (id, short_url, original_url) VALUES($1, $2, $3) ON CONFLICT (original_url) DO NOTHING`
+	q := `INSERT INTO urls (id, short_url, original_url) VALUES($1, $2, $3)`
 
 	_, err := db.Exec(ctx, q, link.ID, link.ShortURL, link.OriginalURL)
 	if err != nil {
@@ -77,19 +77,6 @@ func (db *Database) SaveLinkDB(ctx context.Context, link Link) error {
 	}
 
 	return nil
-}
-
-func (db *Database) GetShortURL(ctx context.Context, originalURL string) (string, error) {
-	var shortURL string
-	row := db.QueryRow(ctx, `SELECT short_url from urls where original_url = $1`, originalURL)
-
-	err := row.Scan(&shortURL)
-	if err != nil {
-		fmt.Println("GetShortURL err = ", err)
-		return shortURL, err
-	}
-
-	return shortURL, nil
 }
 
 func (db *Database) GetLinkByIDFromDB(ctx context.Context, short string) (string, error) {

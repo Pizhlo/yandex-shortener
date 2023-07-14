@@ -100,31 +100,21 @@ func ReceiveManyURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *ht
 
 	statusCode := http.StatusCreated
 	var path string
-	var shortURL string
 
 	for _, val := range requestArr {
 		resp := models.ResponseAPI{ID: val.ID}
+		shortURL := util.Shorten(val.URL)
 
 		err := memory.SaveLink(ctx, val.ID, shortURL, val.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
 		if err != nil {
 			if err.Error() == uniqueViolation {
 				fmt.Println("unique err: ", err)
 				statusCode = http.StatusConflict
-
-				shortURL, err = db.GetShortURL(ctx, val.URL)
-				if err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				resp.ShortURL = shortURL
-
 			} else { // if error is not unique violation
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-		} else { // if no errors occured
-			shortURL = util.Shorten(val.URL)
 		}
 
 		path, err = util.MakeURL(conf.FlagBaseAddr, shortURL)
