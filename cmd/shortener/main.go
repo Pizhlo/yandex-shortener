@@ -29,21 +29,26 @@ func main() {
 		"addr", conf.FlagRunAddr,
 	)
 
-	storage, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile)
+	memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile) // in-memory and file storage
 	if err != nil {
 		log.Sugar.Fatal("error while creating storage: ", zap.Error(err))
 	}
 
-	if conf.FlagSaveToFile {
-		defer storage.FileStorage.Close()
+	db, err := storage.NewStore(conf.FlagDatabaseAddress)
+	if err != nil {
+		log.Sugar.Fatal("error while connecting db: ", zap.Error(err))
 	}
 
-	if err := http.ListenAndServe(conf.FlagRunAddr, Run(conf, storage)); err != nil {
+	if conf.FlagSaveToFile {
+		defer memory.FileStorage.Close()
+	}
+
+	if err := http.ListenAndServe(conf.FlagRunAddr, Run(conf, memory, db)); err != nil {
 		log.Sugar.Fatal("error while executing server: ", zap.Error(err))
 	}
 }
 
-func Run(conf config.Config, store *storage.LinkStorage) chi.Router {
+func Run(conf config.Config, store *storage.LinkStorage, db *storage.Database) chi.Router {
 	r := chi.NewRouter()
 	r.Use(log.WithLogging)
 	r.Use(compress.UnpackData)
@@ -56,19 +61,28 @@ func Run(conf config.Config, store *storage.LinkStorage) chi.Router {
 		"text/xml"))
 
 	r.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
-		internal.GetURL(store, rw, r)
+		internal.GetURL(store, rw, r, conf, db)
 	})
+
 	r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		internal.ReceiveURL(store, rw, r, conf.FlagBaseAddr, conf.FlagSaveToFile)
+		internal.ReceiveURL(store, rw, r, conf, db)
 	})
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AllowContentType("application/json"))
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
-				internal.ReceiveURLAPI(store, rw, r, conf.FlagBaseAddr, conf.FlagSaveToFile)
+				internal.ReceiveURLAPI(store, rw, r, conf, db)
+			})
+
+			r.Post("/shorten/batch", func(rw http.ResponseWriter, r *http.Request) {
+				internal.ReceiveManyURLAPI(store, rw, r, conf, db)
 			})
 		})
+	})
+
+	r.Get("/ping", func(rw http.ResponseWriter, r *http.Request) {
+		internal.Ping(rw, r, db, conf.FlagSaveToDB)
 	})
 
 	return r

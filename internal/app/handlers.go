@@ -1,71 +1,20 @@
 package app
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
-	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
-	"github.com/Pizhlo/yandex-shortener/internal/app/models"
-	store "github.com/Pizhlo/yandex-shortener/storage"
+	"github.com/Pizhlo/yandex-shortener/config"
+	"github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
 
-func ReceiveURLAPI(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
-	fmt.Println("ReceiveURLAPI")
-	var req models.Request
-
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&req); err != nil {
-		fmt.Println("Decode err = ", err)
-		log.Sugar.Debug("cannot decode request JSON body", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	short := util.Shorten(req.URL)
-
-	storage.SaveLink(short, req.URL, flag)
-
-	path, err := util.MakeURL(baseURL, short)
-	if err != nil {
-		fmt.Println("path err = ", err)
-		log.Sugar.Debug("cannot make path", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	resp := models.Response{
-		Result: path,
-	}
-
-	setHeader(w, "Content-Type", "application/json", http.StatusCreated)
-
-	respJSON, err := json.Marshal(resp)
-	if err != nil {
-		fmt.Println("Marshal err = ", err)
-		log.Sugar.Debug("cannot Marshal resp", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, err = w.Write(respJSON)
-	if err != nil {
-		fmt.Println("Write err = ", err)
-		log.Sugar.Debug("cannot Write resp", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Println("respJSON = ", string(respJSON))
-
-}
-
-func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request, baseURL string, flag bool) {
+func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
 	fmt.Println("ReceiveUrl")
 
 	// сократить ссылку
@@ -73,35 +22,53 @@ func ReceiveURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Reque
 
 	j, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	short := util.Shorten(string(j))
+	statusCode := http.StatusCreated
+	shortURL := util.Shorten(string(j))
 
-	storage.SaveLink(short, string(j), flag)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
 
-	path, err := util.MakeURL(baseURL, short)
+	if err := memory.SaveLink(ctx, "", shortURL, string(j), conf.FlagSaveToFile, conf.FlagSaveToDB, db); err != nil {
+		if err.Error() == uniqueViolation {
+			statusCode = http.StatusConflict
+
+		}
+		fmt.Println("ReceiveUrl SaveLink err = ", err)
+	}
+
+	fmt.Println("code = ", statusCode)
+
+	path, err := util.MakeURL(conf.FlagBaseAddr, shortURL)
 	if err != nil {
 		fmt.Println("err: ", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	setHeader(w, "Content-Type", "text/plain", http.StatusCreated)
+	setHeader(w, "Content-Type", "text/plain", statusCode)
 	w.Write([]byte(path))
 }
 
-func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) {
+func GetURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
 	fmt.Println("GetUrl")
 
 	// проверить наличие ссылки в базе
 	// выдать ссылку
 
 	id := chi.URLParam(r, "id")
-	val, err := storage.GetLinkByID(id)
+
+	fmt.Println("url = ", id)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	val, err := memory.GetLinkByID(ctx, id, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
+		if errors.Is(err, storage.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -109,6 +76,21 @@ func GetURL(storage *store.LinkStorage, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
+}
+
+func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database, flagDB bool) {
+	// ping
+
+	if flagDB {
+		err := db.Ping()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusForbidden)
+	}
+
 }
 
 func setHeader(w http.ResponseWriter, header string, val string, statusCode int) {
