@@ -6,8 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Pizhlo/yandex-shortener/config"
-	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/require"
 )
@@ -33,24 +31,24 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 	return resp
 }
 
-func runTestServer(storage *store.LinkStorage, conf config.Config, db *store.Database) chi.Router {
+func runTestServer(handler Handler) chi.Router {
 	router := chi.NewRouter()
 
 	router.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
-		GetURL(storage, rw, r, conf, db)
+		GetURL(handler, rw, r)
 	})
 	router.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		ReceiveURL(storage, rw, r, conf, db)
+		ReceiveURL(handler, rw, r)
 	})
 
 	router.Group(func(r chi.Router) {
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
-				ReceiveURLAPI(storage, rw, r, conf, db)
+				ReceiveURLAPI(handler, rw, r)
 			})
 
 			r.Post("/shorten/batch", func(rw http.ResponseWriter, r *http.Request) {
-				ReceiveManyURLAPI(storage, rw, r, conf, db)
+				ReceiveManyURLAPI(handler, rw, r)
 			})
 		})
 	})

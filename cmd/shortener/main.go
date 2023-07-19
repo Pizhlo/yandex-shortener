@@ -43,12 +43,21 @@ func main() {
 		defer memory.FileStorage.Close()
 	}
 
-	if err := http.ListenAndServe(conf.FlagRunAddr, Run(conf, memory, db)); err != nil {
+	handler := internal.Handler{
+		Memory: memory,
+		DB: db,
+		FlagBaseAddr: conf.FlagBaseAddr,
+		FlagSaveToFile: conf.FlagSaveToFile,
+		FlagSaveToDB: conf.FlagSaveToDB,
+		FlagPathToFile: conf.FlagPathToFile,
+	}
+
+	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler)); err != nil {
 		log.Sugar.Fatal("error while executing server: ", zap.Error(err))
 	}
 }
 
-func Run(conf config.Config, store *storage.LinkStorage, db *storage.Database) chi.Router {
+func Run(handler internal.Handler) chi.Router {
 	r := chi.NewRouter()
 	r.Use(log.WithLogging)
 	r.Use(compress.UnpackData)
@@ -61,28 +70,28 @@ func Run(conf config.Config, store *storage.LinkStorage, db *storage.Database) c
 		"text/xml"))
 
 	r.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
-		internal.GetURL(store, rw, r, conf, db)
+		internal.GetURL(handler, rw, r)
 	})
 
 	r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		internal.ReceiveURL(store, rw, r, conf, db)
+		internal.ReceiveURL(handler, rw, r)
 	})
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AllowContentType("application/json"))
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
-				internal.ReceiveURLAPI(store, rw, r, conf, db)
+				internal.ReceiveURLAPI(handler, rw, r)
 			})
 
 			r.Post("/shorten/batch", func(rw http.ResponseWriter, r *http.Request) {
-				internal.ReceiveManyURLAPI(store, rw, r, conf, db)
+				internal.ReceiveManyURLAPI(handler, rw, r)
 			})
 		})
 	})
 
 	r.Get("/ping", func(rw http.ResponseWriter, r *http.Request) {
-		internal.Ping(rw, r, db, conf.FlagSaveToDB)
+		internal.Ping(rw, r, handler.DB, handler.FlagSaveToDB)
 	})
 
 	return r

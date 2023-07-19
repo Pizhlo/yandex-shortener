@@ -7,16 +7,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Pizhlo/yandex-shortener/config"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
-	"github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"go.uber.org/zap"
 )
 
 const uniqueViolation = `ERROR: duplicate key value violates unique constraint "urls_original_url_idx" (SQLSTATE 23505)`
 
-func ReceiveURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
+func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ReceiveURLAPI")
 	var req models.Request
 
@@ -32,17 +30,17 @@ func ReceiveURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.R
 
 	short := util.Shorten(req.URL)
 
-	err := memory.SaveLink(ctx, "", short, req.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
+	err := handler.Memory.SaveLink(ctx, "", short, req.URL, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB)
 	if err != nil {
 		if err.Error() == uniqueViolation {
-			sendJSONRespSingleURL(w, conf.FlagBaseAddr, short, http.StatusConflict)
+			sendJSONRespSingleURL(w, handler.FlagBaseAddr, short, http.StatusConflict)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	sendJSONRespSingleURL(w, conf.FlagBaseAddr, short, http.StatusCreated)
+	sendJSONRespSingleURL(w, handler.FlagBaseAddr, short, http.StatusCreated)
 }
 
 func sendJSONRespSingleURL(w http.ResponseWriter, flagBaseAddr, short string, statusCode int) error {
@@ -82,7 +80,7 @@ func sendJSONRespSingleURL(w http.ResponseWriter, flagBaseAddr, short string, st
 	return nil
 }
 
-func ReceiveManyURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
+func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ReceiveManyURLAPI")
 
 	var requestArr []models.RequestAPI
@@ -105,7 +103,7 @@ func ReceiveManyURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *ht
 		resp := models.ResponseAPI{ID: val.ID}
 		shortURL := util.Shorten(val.URL)
 
-		err := memory.SaveLink(ctx, val.ID, shortURL, val.URL, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
+		err := handler.Memory.SaveLink(ctx, val.ID, shortURL, val.URL, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB)
 		if err != nil {
 			if err.Error() == uniqueViolation {
 				fmt.Println("unique err: ", err)
@@ -117,7 +115,7 @@ func ReceiveManyURLAPI(memory *storage.LinkStorage, w http.ResponseWriter, r *ht
 
 		}
 
-		path, err = util.MakeURL(conf.FlagBaseAddr, shortURL)
+		path, err = util.MakeURL(handler.FlagBaseAddr, shortURL)
 		if err != nil {
 			fmt.Println("cannot make path", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)

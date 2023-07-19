@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Pizhlo/yandex-shortener/config"
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/google/uuid"
@@ -59,14 +58,18 @@ func TestGetURL(t *testing.T) {
 			statusCode: http.StatusNotFound,
 		},
 	}
-	conf := config.Config{
+
+	h := Handler{
+		DB:             nil,
 		FlagSaveToFile: false,
 		FlagSaveToDB:   false,
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
 
 	for _, v := range tests {
-		ts := httptest.NewServer(runTestServer(&v.store, conf, nil))
+		h.Memory = &v.store
+
+		ts := httptest.NewServer(runTestServer(h))
 		defer ts.Close()
 
 		resp := testRequest(t, ts, "GET", v.request, nil)
@@ -121,14 +124,17 @@ func TestReceiveURL(t *testing.T) {
 		},
 	}
 
-	conf := config.Config{
+	h := Handler{
+		DB:             nil,
 		FlagSaveToFile: false,
 		FlagSaveToDB:   false,
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
 
 	for _, v := range tests {
-		ts := httptest.NewServer(runTestServer(&v.store, conf, nil))
+		h.Memory = &v.store
+
+		ts := httptest.NewServer(runTestServer(h))
 		defer ts.Close()
 
 		body := strings.NewReader(string(v.body))

@@ -8,13 +8,21 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Pizhlo/yandex-shortener/config"
 	"github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
 )
 
-func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
+type Handler struct {
+	Memory         *storage.LinkStorage
+	DB             *storage.Database
+	FlagBaseAddr   string
+	FlagPathToFile string
+	FlagSaveToFile bool
+	FlagSaveToDB   bool
+}
+
+func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("ReceiveUrl")
 
 	// сократить ссылку
@@ -32,7 +40,7 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	if err := memory.SaveLink(ctx, "", shortURL, string(j), conf.FlagSaveToFile, conf.FlagSaveToDB, db); err != nil {
+	if err := handler.Memory.SaveLink(ctx, "", shortURL, string(j), handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB); err != nil {
 		if err.Error() == uniqueViolation {
 			statusCode = http.StatusConflict
 
@@ -42,7 +50,7 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 
 	fmt.Println("code = ", statusCode)
 
-	path, err := util.MakeURL(conf.FlagBaseAddr, shortURL)
+	path, err := util.MakeURL(handler.FlagBaseAddr, shortURL)
 	if err != nil {
 		fmt.Println("err: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -53,7 +61,7 @@ func ReceiveURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Requ
 	w.Write([]byte(path))
 }
 
-func GetURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request, conf config.Config, db *storage.Database) {
+func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 	fmt.Println("GetUrl")
 
 	// проверить наличие ссылки в базе
@@ -66,7 +74,7 @@ func GetURL(memory *storage.LinkStorage, w http.ResponseWriter, r *http.Request,
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	val, err := memory.GetLinkByID(ctx, id, conf.FlagSaveToFile, conf.FlagSaveToDB, db)
+	val, err := handler.Memory.GetLinkByID(ctx, id, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB)
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
