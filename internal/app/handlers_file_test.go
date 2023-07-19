@@ -206,3 +206,89 @@ func TestReceiveURLFileStorage(t *testing.T) {
 
 	}
 }
+
+func TestReceiveManyURLAPIFileStorage(t *testing.T) {
+	type args struct {
+		method       string
+		request      string
+		expectedCode int
+		body         []models.RequestAPI
+		expectedBody []models.ResponseAPI
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "positive test without DB",
+			args: args{
+				method:       http.MethodPost,
+				request:      "/api/shorten/batch",
+				expectedCode: http.StatusCreated,
+				body: []models.RequestAPI{
+					{
+						ID:  "e169d217-d3c8-493a-930f-7432368139c7",
+						URL: "mail2.ru",
+					},
+					{
+						ID:  "c82b937d-c303-40e1-a655-ab085002dfa0",
+						URL: "https://practicum.yandex.ru",
+					},
+					{
+						ID:  "cd53c344-fb57-42cf-b576-823476f90918",
+						URL: "EwHXdJfB",
+					}},
+
+				expectedBody: []models.ResponseAPI{
+					{
+						ID:       "e169d217-d3c8-493a-930f-7432368139c7",
+						ShortURL: "http://localhost:8000/NjYyNjB",
+					},
+					{
+						ID:       "c82b937d-c303-40e1-a655-ab085002dfa0",
+						ShortURL: "http://localhost:8000/NmJkYjV",
+					},
+					{
+						ID:       "cd53c344-fb57-42cf-b576-823476f90918",
+						ShortURL: "http://localhost:8000/ODczZGQ",
+					}},
+			},
+		},
+	}
+
+	h := Handler{
+		DB:             nil,
+		FlagSaveToFile: true,
+		FlagSaveToDB:   false,
+		FlagPathToFile: "tmp/short-url-db-test.json",
+		FlagBaseAddr:   "http://localhost:8000/",
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			memory, err := store.New(h.FlagSaveToFile, h.FlagPathToFile)
+			require.NoError(t, err)
+
+			h.Memory = memory
+
+			ts := httptest.NewServer(runTestServer(h))
+			defer ts.Close()
+
+			bodyJSON, err := json.Marshal(tt.args.body)
+			require.NoError(t, err)
+
+			resp := testRequest(t, ts, tt.args.method, tt.args.request, bytes.NewReader(bodyJSON))
+			defer resp.Body.Close()
+
+			assert.Equal(t, tt.args.expectedCode, resp.StatusCode)
+
+			var result []models.ResponseAPI
+
+			dec := json.NewDecoder(resp.Body)
+			err = dec.Decode(&result)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.args.expectedBody, result)
+		})
+	}
+}
