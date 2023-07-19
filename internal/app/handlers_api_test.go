@@ -7,10 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	store "github.com/Pizhlo/yandex-shortener/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestReceiveURLAPI(t *testing.T) {
@@ -48,7 +50,10 @@ func TestReceiveURLAPI(t *testing.T) {
 	for _, v := range testCases {
 		h.Memory = &v.store
 
-		ts := httptest.NewServer(runTestServer(h))
+		r, err := runTestServer(h)
+		require.NoError(t, err)
+
+		ts := httptest.NewServer(r)
 		defer ts.Close()
 
 		bodyJSON, err := json.Marshal(v.body)
@@ -126,12 +131,27 @@ func TestReceiveManyURLAPI(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			memory, err := store.New(h.FlagSaveToFile, h.FlagPathToFile)
+			logger := log.Logger{}
+
+			zapLogger, err := zap.NewDevelopment()
+			require.NoError(t, err)
+
+			defer zapLogger.Sync()
+
+			sugar := *zapLogger.Sugar()
+
+			logger.Sugar = sugar
+			h.Logger = logger
+
+			memory, err := store.New(h.FlagSaveToFile, h.FlagPathToFile, h.Logger)
 			require.NoError(t, err)
 
 			h.Memory = memory
 
-			ts := httptest.NewServer(runTestServer(h))
+			r, err := runTestServer(h)
+			require.NoError(t, err)
+
+			ts := httptest.NewServer(r)
 			defer ts.Close()
 
 			bodyJSON, err := json.Marshal(tt.args.body)
