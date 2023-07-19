@@ -143,7 +143,7 @@ func TestReceiveManyURLAPI(t *testing.T) {
 			logger.Sugar = sugar
 			h.Logger = logger
 
-			memory, err := store.New(h.FlagSaveToFile, h.FlagPathToFile, h.Logger)
+			memory, err := store.New(h.Logger)
 			require.NoError(t, err)
 
 			h.Memory = memory

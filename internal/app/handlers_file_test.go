@@ -61,8 +61,13 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.FlagSaveToFile, h.FlagPathToFile, h.Logger)
+		memory, err := store.New(h.Logger)
 		require.NoError(t, err)
+
+		fileStorage, err := store.NewFileStorage(h.FlagPathToFile)
+		require.NoError(t, err)
+
+		memory.FileStorage = *fileStorage
 
 		h.Memory = memory
 
@@ -122,7 +127,7 @@ func TestGetURLFileStorage(t *testing.T) {
 					},
 				},
 			},
-			statusCode: http.StatusNotFound,
+			statusCode: http.StatusTemporaryRedirect,
 		},
 		{
 			name:    "not found",
@@ -155,10 +160,12 @@ func TestGetURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.FlagSaveToFile, h.FlagPathToFile, h.Logger)
+		h.Memory = &v.store
+
+		fileStorage, err := store.NewFileStorage(h.FlagPathToFile)
 		require.NoError(t, err)
 
-		h.Memory = memory
+		h.Memory.FileStorage = *fileStorage
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
@@ -229,8 +236,13 @@ func TestReceiveURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.FlagSaveToFile, h.FlagPathToFile, h.Logger)
+		memory, err := store.New(h.Logger)
 		require.NoError(t, err)
+
+		fileStorage, err := store.NewFileStorage(h.FlagPathToFile)
+		require.NoError(t, err)
+
+		memory.FileStorage = *fileStorage
 
 		h.Memory = memory
 
@@ -325,8 +337,13 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 			logger.Sugar = sugar
 			h.Logger = logger
 
-			memory, err := store.New(h.FlagSaveToFile, h.FlagPathToFile, h.Logger)
+			memory, err := store.New(h.Logger)
 			require.NoError(t, err)
+
+			fileStorage, err := store.NewFileStorage(h.FlagPathToFile)
+			require.NoError(t, err)
+
+			memory.FileStorage = *fileStorage
 
 			h.Memory = memory
 

@@ -33,7 +33,7 @@ func main() {
 		"addr", conf.FlagRunAddr,
 	)
 
-	memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile, logger) // in-memory and file storage
+	memory, err := storage.New(logger) // in-memory and file storage
 	if err != nil {
 		logger.Sugar.Fatal("error while creating storage: ", zap.Error(err))
 	}

@@ -15,7 +15,7 @@ type LinkStorage struct {
 
 var ErrNotFound = errors.New("not found")
 
-func New(flag bool, filename string, logger log.Logger) (*LinkStorage, error) {
+func New(logger log.Logger) (*LinkStorage, error) {
 	linkStorage := &LinkStorage{}
 	linkStorage.Store = []Link{}
 
