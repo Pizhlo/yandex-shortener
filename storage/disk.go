@@ -2,10 +2,10 @@ package storage
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 
+	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/google/uuid"
 )
 
@@ -41,8 +41,9 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 	return fileStorage, nil
 }
 
-func (f *FileStorage) RecoverData() ([]Link, error) {
-	fmt.Println("RecoverData")
+func (f *FileStorage) RecoverData(logger log.Logger) ([]Link, error) {
+	logger.Sugar.Debug("RecoverData")
+
 	links := []Link{}
 
 	for {
@@ -52,22 +53,20 @@ func (f *FileStorage) RecoverData() ([]Link, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		fmt.Println(link)
 		links = append(links, link)
 	}
 
 	return links, nil
 }
 
-func (f *FileStorage) SaveDataToFile(link Link) error {
-	fmt.Println("SaveDataToFile")
+func (f *FileStorage) SaveDataToFile(link Link, logger log.Logger) error {
+	logger.Sugar.Debug("SaveDataToFile")
 
-	fmt.Printf("link: %#v\n", link)
+	logger.Sugar.Debug("link: %#v\n", link)
 
 	return f.encoder.Encode(&link)
 }
 
 func (f *FileStorage) Close() error {
-	fmt.Println("Close")
 	return f.file.Close()
 }

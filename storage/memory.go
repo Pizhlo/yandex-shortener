@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
 
+	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/google/uuid"
 )
 
@@ -15,7 +15,7 @@ type LinkStorage struct {
 
 var ErrNotFound = errors.New("not found")
 
-func New(flag bool, filename string) (*LinkStorage, error) {
+func New(flag bool, filename string, logger log.Logger) (*LinkStorage, error) {
 	linkStorage := &LinkStorage{}
 	linkStorage.Store = []Link{}
 
@@ -25,7 +25,7 @@ func New(flag bool, filename string) (*LinkStorage, error) {
 			return linkStorage, err
 		}
 		linkStorage.FileStorage = *fileStorage
-		if err := linkStorage.RecoverData(); err != nil {
+		if err := linkStorage.RecoverData(logger); err != nil {
 			return linkStorage, err
 		}
 	}
@@ -33,8 +33,8 @@ func New(flag bool, filename string) (*LinkStorage, error) {
 	return linkStorage, nil
 }
 
-func (s *LinkStorage) RecoverData() error {
-	links, err := s.FileStorage.RecoverData()
+func (s *LinkStorage) RecoverData(logger log.Logger) error {
+	links, err := s.FileStorage.RecoverData(logger)
 	if err != nil {
 		return err
 	}
@@ -42,14 +42,14 @@ func (s *LinkStorage) RecoverData() error {
 	return nil
 }
 
-func (s *LinkStorage) GetLinkByID(ctx context.Context, shortURL string, flagSaveToFile bool, flagSaveToDB bool, db *Database) (string, error) {
-	fmt.Println("GetLinkByID")
+func (s *LinkStorage) GetLinkByID(ctx context.Context, shortURL string, flagSaveToFile bool, flagSaveToDB bool, db *Database, logger log.Logger) (string, error) {
+	logger.Sugar.Debug("GetLinkByID")
 
-	fmt.Println("shortURL = ", shortURL)
-	fmt.Println("s.Store = ", s.Store)
+	logger.Sugar.Debug("shortURL = ", shortURL)
+	logger.Sugar.Debug("s.Store = ", s.Store)
 
 	if flagSaveToDB {
-		return db.GetLinkByIDFromDB(ctx, shortURL)
+		return db.GetLinkByIDFromDB(ctx, shortURL, logger)
 	}
 
 	for _, val := range s.Store {
@@ -61,10 +61,10 @@ func (s *LinkStorage) GetLinkByID(ctx context.Context, shortURL string, flagSave
 	return "", ErrNotFound
 }
 
-func (s *LinkStorage) SaveLink(ctx context.Context, id, shortURL, originalURL string, flagSaveToFile bool, flagSaveToDB bool, db *Database) error {
-	fmt.Println("SaveLink")
+func (s *LinkStorage) SaveLink(ctx context.Context, id, shortURL, originalURL string, flagSaveToFile bool, flagSaveToDB bool, db *Database, logger log.Logger) error {
+	logger.Sugar.Debug("SaveLink")
 
-	fmt.Println("shortURL = ", shortURL, "original URL = ", originalURL)
+	logger.Sugar.Debug("shortURL = ", shortURL, "original URL = ", originalURL)
 
 	link, err := makeLinkModel(id, shortURL, originalURL)
 	if err != nil {
@@ -74,9 +74,9 @@ func (s *LinkStorage) SaveLink(ctx context.Context, id, shortURL, originalURL st
 	s.Store = append(s.Store, link)
 
 	if flagSaveToFile {
-		return s.FileStorage.SaveDataToFile(link)
+		return s.FileStorage.SaveDataToFile(link, logger)
 	} else if flagSaveToDB {
-		return db.SaveLinkDB(ctx, link)
+		return db.SaveLinkDB(ctx, link, logger)
 	}
 
 	return nil

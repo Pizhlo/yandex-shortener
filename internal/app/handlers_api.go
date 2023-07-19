@@ -3,10 +3,10 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
+	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"go.uber.org/zap"
@@ -15,12 +15,13 @@ import (
 const uniqueViolation = `ERROR: duplicate key value violates unique constraint "urls_original_url_idx" (SQLSTATE 23505)`
 
 func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ReceiveURLAPI")
+	handler.Logger.Sugar.Debug("ReceiveURLAPI")
+
 	var req models.Request
 
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
-		fmt.Println("cannot decode request JSON body", zap.Error(err))
+		handler.Logger.Sugar.Debug("ReceiveURLAPI cannot decode request JSON body; err = ", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -30,27 +31,27 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	short := util.Shorten(req.URL)
 
-	err := handler.Memory.SaveLink(ctx, "", short, req.URL, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB)
+	err := handler.Memory.SaveLink(ctx, "", short, req.URL, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB, handler.Logger)
 	if err != nil {
 		if err.Error() == uniqueViolation {
-			sendJSONRespSingleURL(w, handler.FlagBaseAddr, short, http.StatusConflict)
+			sendJSONRespSingleURL(w, handler.FlagBaseAddr, short, http.StatusConflict, handler.Logger)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	sendJSONRespSingleURL(w, handler.FlagBaseAddr, short, http.StatusCreated)
+	sendJSONRespSingleURL(w, handler.FlagBaseAddr, short, http.StatusCreated, handler.Logger)
 }
 
-func sendJSONRespSingleURL(w http.ResponseWriter, flagBaseAddr, short string, statusCode int) error {
+func sendJSONRespSingleURL(w http.ResponseWriter, flagBaseAddr, short string, statusCode int, logger log.Logger) error {
 	resp := models.Response{
 		Result: "",
 	}
 
 	path, err := util.MakeURL(flagBaseAddr, short)
 	if err != nil {
-		fmt.Println("cannot make path", zap.Error(err))
+		logger.Sugar.Debug("cannot make path", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
 	}
@@ -61,34 +62,32 @@ func sendJSONRespSingleURL(w http.ResponseWriter, flagBaseAddr, short string, st
 
 	respJSON, err := json.Marshal(resp)
 	if err != nil {
-		fmt.Println("Marshal err = ", err)
-		fmt.Println("cannot Marshal resp", zap.Error(err))
+		logger.Sugar.Debug("cannot Marshal resp: ", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
 	}
 
 	_, err = w.Write(respJSON)
 	if err != nil {
-		fmt.Println("Write err = ", err)
-		fmt.Println("cannot Write resp", zap.Error(err))
+		logger.Sugar.Debug("cannot Write resp: ", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return err
 	}
 
-	fmt.Println("respJSON = ", string(respJSON))
+	logger.Sugar.Debug("respJSON: ", string(respJSON))
 
 	return nil
 }
 
 func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ReceiveManyURLAPI")
+	handler.Logger.Sugar.Debug("ReceiveManyURLAPI")
 
 	var requestArr []models.RequestAPI
 	var responseArr []models.ResponseAPI
 
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&requestArr); err != nil {
-		fmt.Println("cannot decode request JSON body: ", zap.Error(err))
+		handler.Logger.Sugar.Debug("cannot decode request JSON body: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -103,10 +102,9 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 		resp := models.ResponseAPI{ID: val.ID}
 		shortURL := util.Shorten(val.URL)
 
-		err := handler.Memory.SaveLink(ctx, val.ID, shortURL, val.URL, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB)
+		err := handler.Memory.SaveLink(ctx, val.ID, shortURL, val.URL, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB, handler.Logger)
 		if err != nil {
 			if err.Error() == uniqueViolation {
-				fmt.Println("unique err: ", err)
 				statusCode = http.StatusConflict
 			} else { // if error is not unique violation
 				w.WriteHeader(http.StatusInternalServerError)
@@ -117,7 +115,7 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 
 		path, err = util.MakeURL(handler.FlagBaseAddr, shortURL)
 		if err != nil {
-			fmt.Println("cannot make path", zap.Error(err))
+			handler.Logger.Sugar.Debug("cannot make path: ", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -131,20 +129,18 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 
 	respJSON, err := json.Marshal(responseArr)
 	if err != nil {
-		fmt.Println("Marshal err = ", err)
-		fmt.Println("cannot Marshal resp", zap.Error(err))
+		handler.Logger.Sugar.Debug("cannot Marshal resp: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	_, err = w.Write(respJSON)
 	if err != nil {
-		fmt.Println("Write err = ", err)
-		fmt.Println("cannot Write resp", zap.Error(err))
+		handler.Logger.Sugar.Debug("cannot Write resp: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println("respJSON Many URL= ", string(respJSON))
+	handler.Logger.Sugar.Debug("respJSON Many UR: ", string(respJSON))
 
 }

@@ -16,27 +16,31 @@ import (
 func main() {
 	conf := config.ParseConfigAndFlags()
 
-	logger, err := zap.NewDevelopment()
+	logger := log.Logger{}
+
+	zapLogger, err := zap.NewDevelopment()
 	if err != nil {
-		log.Sugar.Fatal("error while creating sugar: ", zap.Error(err))
+		zapLogger.Fatal("error while creating sugar: ", zap.Error(err))
 	}
-	defer logger.Sync()
+	defer zapLogger.Sync()
 
-	log.Sugar = *logger.Sugar()
+	sugar := *zapLogger.Sugar()
 
-	log.Sugar.Infow(
+	logger.Sugar = sugar
+
+	logger.Sugar.Infow(
 		"Starting server",
 		"addr", conf.FlagRunAddr,
 	)
 
-	memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile) // in-memory and file storage
+	memory, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile, logger) // in-memory and file storage
 	if err != nil {
-		log.Sugar.Fatal("error while creating storage: ", zap.Error(err))
+		logger.Sugar.Fatal("error while creating storage: ", zap.Error(err))
 	}
 
 	db, err := storage.NewStore(conf.FlagDatabaseAddress)
 	if err != nil {
-		log.Sugar.Fatal("error while connecting db: ", zap.Error(err))
+		logger.Sugar.Fatal("error while connecting db: ", zap.Error(err))
 	}
 
 	if conf.FlagSaveToFile {
@@ -44,22 +48,23 @@ func main() {
 	}
 
 	handler := internal.Handler{
-		Memory: memory,
-		DB: db,
-		FlagBaseAddr: conf.FlagBaseAddr,
+		Memory:         memory,
+		DB:             db,
+		Logger:         logger,
+		FlagBaseAddr:   conf.FlagBaseAddr,
 		FlagSaveToFile: conf.FlagSaveToFile,
-		FlagSaveToDB: conf.FlagSaveToDB,
+		FlagSaveToDB:   conf.FlagSaveToDB,
 		FlagPathToFile: conf.FlagPathToFile,
 	}
 
 	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler)); err != nil {
-		log.Sugar.Fatal("error while executing server: ", zap.Error(err))
+		logger.Sugar.Fatal("error while executing server: ", zap.Error(err))
 	}
 }
 
 func Run(handler internal.Handler) chi.Router {
 	r := chi.NewRouter()
-	r.Use(log.WithLogging)
+	r.Use(handler.Logger.WithLogging)
 	r.Use(compress.UnpackData)
 
 	r.Use(middleware.Compress(5, "application/javascript",
