@@ -19,17 +19,6 @@ func New(flag bool, filename string, logger log.Logger) (*LinkStorage, error) {
 	linkStorage := &LinkStorage{}
 	linkStorage.Store = []Link{}
 
-	if flag {
-		fileStorage, err := NewFileStorage(filename)
-		if err != nil {
-			return linkStorage, err
-		}
-		linkStorage.FileStorage = *fileStorage
-		if err := linkStorage.RecoverData(logger); err != nil {
-			return linkStorage, err
-		}
-	}
-
 	return linkStorage, nil
 }
 

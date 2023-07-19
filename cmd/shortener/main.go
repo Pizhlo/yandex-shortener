@@ -38,6 +38,18 @@ func main() {
 		logger.Sugar.Fatal("error while creating storage: ", zap.Error(err))
 	}
 
+	if conf.FlagSaveToFile {
+		fileStorage, err := storage.NewFileStorage(conf.FlagPathToFile)
+		if err != nil {
+			logger.Sugar.Fatal("error while creating file storage: ", zap.Error(err))
+		}
+		memory.FileStorage = *fileStorage
+
+		if err := memory.RecoverData(logger); err != nil {
+			logger.Sugar.Fatal("unable to recover file data: ", zap.Error(err))
+		}
+	}
+
 	db, err := storage.NewStore(conf.FlagDatabaseAddress)
 	if err != nil {
 		logger.Sugar.Fatal("error while connecting db: ", zap.Error(err))
