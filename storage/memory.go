@@ -11,6 +11,7 @@ import (
 type LinkStorage struct {
 	Store       []Link
 	FileStorage FileStorage
+	DB          Database
 }
 
 var ErrNotFound = errors.New("not found")

@@ -86,9 +86,8 @@ func (db *Database) GetLinkByIDFromDB(ctx context.Context, short string, logger 
 
 	var originalURL string
 
-	row := db.QueryRow(ctx, `SELECT original_url from urls where short_url = $1`, short)
+	err := db.QueryRow(ctx, `SELECT original_url from urls where short_url = $1`, short).Scan(&originalURL)
 
-	err := row.Scan(&originalURL)
 	if err != nil {
 		logger.Sugar.Debug("GetLinkByIDFromDB err = ", err)
 		if errors.Is(err, pgx.ErrNoRows) {
