@@ -1,29 +1,24 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"os"
 
+	"github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
-	"github.com/google/uuid"
+	"github.com/Pizhlo/yandex-shortener/storage/model"
 )
 
-type Link struct {
-	ID          uuid.UUID `json:"id"`
-	ShortURL    string    `json:"short_url"`
-	OriginalURL string    `json:"original_url"`
-}
-
-// {"uuid":"1","short_url":"4rSPg8ap","original_url":"http://yandex.ru"}
-
 type FileStorage struct {
-	file    *os.File
-	encoder *json.Encoder
-	decoder *json.Decoder
+	FlagSaveToFile bool
+	file           *os.File
+	encoder        *json.Encoder
+	decoder        *json.Decoder
 }
 
-func NewFileStorage(filename string) (*FileStorage, error) {
+func New(filename string) (*FileStorage, error) {
 	fileStorage := &FileStorage{}
 	if err := os.MkdirAll("tmp", os.ModePerm); err != nil {
 		return fileStorage, err
@@ -34,6 +29,7 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 		return fileStorage, err
 	}
 
+	fileStorage.FlagSaveToFile = true
 	fileStorage.file = file
 	fileStorage.decoder = json.NewDecoder(file)
 	fileStorage.encoder = json.NewEncoder(file)
@@ -41,13 +37,13 @@ func NewFileStorage(filename string) (*FileStorage, error) {
 	return fileStorage, nil
 }
 
-func (f *FileStorage) RecoverData(logger log.Logger) ([]Link, error) {
+func (f *FileStorage) RecoverData(logger log.Logger) ([]model.Link, error) {
 	logger.Sugar.Debug("RecoverData")
 
-	links := []Link{}
+	links := []model.Link{}
 
 	for {
-		var link Link
+		var link model.Link
 		if err := f.decoder.Decode(&link); err == io.EOF {
 			break
 		} else if err != nil {
@@ -59,12 +55,16 @@ func (f *FileStorage) RecoverData(logger log.Logger) ([]Link, error) {
 	return links, nil
 }
 
-func (f *FileStorage) SaveDataToFile(link Link, logger log.Logger) error {
+func (f *FileStorage) Save(ctx context.Context, link model.Link, logger log.Logger) error {
 	logger.Sugar.Debug("SaveDataToFile")
 
-	logger.Sugar.Debug("link: %#v\n", link)
+	logger.Sugar.Debugf("link: %#v\n", link)
 
 	return f.encoder.Encode(&link)
+}
+
+func (f *FileStorage) Get(ctx context.Context, short string, logger logger.Logger) (string, error) {
+	return "", nil
 }
 
 func (f *FileStorage) Close() error {

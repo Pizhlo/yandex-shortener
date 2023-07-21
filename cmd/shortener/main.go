@@ -7,7 +7,10 @@ import (
 	internal "github.com/Pizhlo/yandex-shortener/internal/app"
 	"github.com/Pizhlo/yandex-shortener/internal/app/compress"
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
-	"github.com/Pizhlo/yandex-shortener/storage"
+	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	storage "github.com/Pizhlo/yandex-shortener/storage/db"
+	file "github.com/Pizhlo/yandex-shortener/storage/file"
+	memory "github.com/Pizhlo/yandex-shortener/storage/memory"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"go.uber.org/zap"
@@ -33,48 +36,42 @@ func main() {
 		"addr", conf.FlagRunAddr,
 	)
 
-	memory, err := storage.New(logger) // in-memory and file storage
-	if err != nil {
-		logger.Sugar.Fatal("error while creating storage: ", zap.Error(err))
-	}
+	var srv *service.Service
+	var db *storage.Database
 
-	if conf.FlagSaveToFile {
-		fileStorage, err := storage.NewFileStorage(conf.FlagPathToFile)
+	if conf.FlagSaveToDB {
+		db, err = storage.New(conf.FlagDatabaseAddress)
+		if err != nil {
+			logger.Sugar.Fatal("error while connecting db: ", zap.Error(err))
+		}
+		srv = service.New(db)
+	} else if conf.FlagSaveToFile {
+		storage, err := file.New(conf.FlagPathToFile)
 		if err != nil {
 			logger.Sugar.Fatal("error while creating file storage: ", zap.Error(err))
 		}
-		memory.FileStorage = *fileStorage
-
-		if err := memory.RecoverData(logger); err != nil {
-			logger.Sugar.Fatal("unable to recover file data: ", zap.Error(err))
+		srv = service.New(storage)
+	} else {
+		storage, err := memory.New(logger)
+		if err != nil {
+			logger.Sugar.Fatal("error while creating memory storage: ", zap.Error(err))
 		}
-	}
-
-	db, err := storage.NewStore(conf.FlagDatabaseAddress)
-	if err != nil {
-		logger.Sugar.Fatal("error while connecting db: ", zap.Error(err))
-	}
-
-	if conf.FlagSaveToFile {
-		defer memory.FileStorage.Close()
+		srv = service.New(storage)
 	}
 
 	handler := internal.Handler{
-		Memory:         memory,
-		DB:             db,
+		Service:        srv,
 		Logger:         logger,
 		FlagBaseAddr:   conf.FlagBaseAddr,
-		FlagSaveToFile: conf.FlagSaveToFile,
-		FlagSaveToDB:   conf.FlagSaveToDB,
 		FlagPathToFile: conf.FlagPathToFile,
 	}
 
-	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler)); err != nil {
+	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler, db)); err != nil {
 		logger.Sugar.Fatal("error while executing server: ", zap.Error(err))
 	}
 }
 
-func Run(handler internal.Handler) chi.Router {
+func Run(handler internal.Handler, db *storage.Database) chi.Router {
 	r := chi.NewRouter()
 	r.Use(handler.Logger.WithLogging)
 	r.Use(compress.UnpackData)
@@ -108,7 +105,7 @@ func Run(handler internal.Handler) chi.Router {
 	})
 
 	r.Get("/ping", func(rw http.ResponseWriter, r *http.Request) {
-		internal.Ping(rw, r, handler.DB, handler.FlagSaveToDB)
+		internal.Ping(rw, r, db)
 	})
 
 	return r

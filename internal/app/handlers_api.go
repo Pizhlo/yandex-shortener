@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
+	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"go.uber.org/zap"
 )
@@ -29,19 +30,25 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
-	short := util.Shorten(req.URL)
+	shortURL := util.Shorten(req.URL)
 
-	err := handler.Memory.SaveLink(ctx, "", short, req.URL, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB, handler.Logger)
+	md, err := model.MakeLinkModel("", shortURL, req.URL)
+	if err != nil {
+		handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	err = handler.Service.Storage.Save(ctx, md, handler.Logger)
 	if err != nil {
 		if err.Error() == uniqueViolation {
-			sendJSONRespSingleURL(w, handler.FlagBaseAddr, short, http.StatusConflict, handler.Logger)
+			sendJSONRespSingleURL(w, handler.FlagBaseAddr, shortURL, http.StatusConflict, handler.Logger)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	sendJSONRespSingleURL(w, handler.FlagBaseAddr, short, http.StatusCreated, handler.Logger)
+	sendJSONRespSingleURL(w, handler.FlagBaseAddr, shortURL, http.StatusCreated, handler.Logger)
 }
 
 func sendJSONRespSingleURL(w http.ResponseWriter, flagBaseAddr, short string, statusCode int, logger log.Logger) error {
@@ -102,7 +109,13 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 		resp := models.ResponseAPI{ID: val.ID}
 		shortURL := util.Shorten(val.URL)
 
-		err := handler.Memory.SaveLink(ctx, val.ID, shortURL, val.URL, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB, handler.Logger)
+		md, err := model.MakeLinkModel("", shortURL, val.URL)
+		if err != nil {
+			handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+
+		err = handler.Service.Storage.Save(ctx, md, handler.Logger)
 		if err != nil {
 			if err.Error() == uniqueViolation {
 				statusCode = http.StatusConflict
@@ -141,6 +154,6 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	handler.Logger.Sugar.Debug("respJSON Many UR: ", string(respJSON))
+	handler.Logger.Sugar.Debug("respJSON Many URL: ", string(respJSON))
 
 }

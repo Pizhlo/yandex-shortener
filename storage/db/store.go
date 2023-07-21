@@ -2,10 +2,12 @@ package storage
 
 import (
 	"context"
-	"errors"
 	"time"
+	"errors"
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
+	"github.com/Pizhlo/yandex-shortener/storage/model"
+	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -17,25 +19,20 @@ type Database struct {
 	*pgx.Conn
 }
 
-func NewStore(databaseAddr string) (*Database, error) {
+func New(databaseAddr string) (*Database, error) {
 	var db *Database
-	if databaseAddr != "" {
-
-		conn, err := pgx.Connect(context.Background(), databaseAddr)
-		if err != nil {
-			return db, err
-		}
-
-		db = &Database{conn}
-
-		return db, db.createTableURLs()
+	conn, err := pgx.Connect(context.Background(), databaseAddr)
+	if err != nil {
+		return db, err
 	}
 
-	return db, nil
+	db.Conn = conn
+
+	return db, db.CreateTableURLs()
 
 }
 
-func (db *Database) createTableURLs() error {
+func (db *Database) CreateTableURLs() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
 
@@ -65,7 +62,7 @@ func (db *Database) Ping() error {
 	return db.PgConn().Ping(context.TODO())
 }
 
-func (db *Database) SaveLinkDB(ctx context.Context, link Link, logger log.Logger) error {
+func (db *Database) Save(ctx context.Context, link model.Link, logger log.Logger) error {
 	logger.Sugar.Debug("SaveLinkDB")
 
 	logger.Sugar.Debugf("INSERT INTO urls (id, short_url, original_url) VALUES(%s, %s, %s)\n", link.ID, link.ShortURL, link.OriginalURL)
@@ -81,7 +78,7 @@ func (db *Database) SaveLinkDB(ctx context.Context, link Link, logger log.Logger
 	return nil
 }
 
-func (db *Database) GetLinkByIDFromDB(ctx context.Context, short string, logger log.Logger) (string, error) {
+func (db *Database) Get(ctx context.Context, short string, logger log.Logger) (string, error) {
 	logger.Sugar.Debug("GetLinkByIDFromDB")
 
 	var originalURL string
@@ -91,7 +88,7 @@ func (db *Database) GetLinkByIDFromDB(ctx context.Context, short string, logger 
 	if err != nil {
 		logger.Sugar.Debug("GetLinkByIDFromDB err = ", err)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return originalURL, ErrNotFound
+			return originalURL, errs.ErrNotFound
 		}
 		return originalURL, err
 	}

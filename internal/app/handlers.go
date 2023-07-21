@@ -1,26 +1,24 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
-	"time"
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
-	"github.com/Pizhlo/yandex-shortener/storage"
+	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	storage "github.com/Pizhlo/yandex-shortener/storage/db"
+	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
+	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
 )
 
 type Handler struct {
-	Memory         *storage.LinkStorage
-	DB             *storage.Database
+	Service        *service.Service
 	Logger         log.Logger
 	FlagBaseAddr   string
 	FlagPathToFile string
-	FlagSaveToFile bool
-	FlagSaveToDB   bool
 }
 
 func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
@@ -38,10 +36,15 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 	statusCode := http.StatusCreated
 	shortURL := util.Shorten(string(j))
 
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
+	ctx := r.Context()
 
-	if err := handler.Memory.SaveLink(ctx, "", shortURL, string(j), handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB, handler.Logger); err != nil {
+	md, err := model.MakeLinkModel("", shortURL, string(j))
+	if err != nil {
+		handler.Logger.Sugar.Debug("ReceiveUrl MakeLinkModel err = ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	
+	if err := handler.Service.Storage.Save(ctx, md, handler.Logger); err != nil {
 		if err.Error() == uniqueViolation {
 			statusCode = http.StatusConflict
 
@@ -69,12 +72,11 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, "id")
 
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
+	ctx := r.Context()
 
-	val, err := handler.Memory.GetLinkByID(ctx, id, handler.FlagSaveToFile, handler.FlagSaveToDB, handler.DB, handler.Logger)
+	val, err := handler.Service.Storage.Get(ctx, id, handler.Logger)
 	if err != nil {
-		if errors.Is(err, storage.ErrNotFound) {
+		if errors.Is(err, errs.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -84,18 +86,14 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
 }
 
-func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database, flagDB bool) {
+func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database) {
 	// ping
 
-	if flagDB {
-		err := db.Ping()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		w.WriteHeader(http.StatusOK)
-	} else {
-		w.WriteHeader(http.StatusForbidden)
+	err := db.Ping()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	w.WriteHeader(http.StatusOK)
 
 }
 
