@@ -9,7 +9,9 @@ import (
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
-	store "github.com/Pizhlo/yandex-shortener/storage"
+	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	store "github.com/Pizhlo/yandex-shortener/storage/memory"
+	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -30,7 +32,7 @@ func TestReceiveURLAPI(t *testing.T) {
 			method: http.MethodPost,
 			body:   models.Request{URL: "https://practicum.yandex.ru"},
 			store: store.LinkStorage{
-				Store: []store.Link{},
+				Store: []model.Link{},
 			},
 			request:      "/api/shorten",
 			expectedCode: http.StatusCreated,
@@ -41,14 +43,13 @@ func TestReceiveURLAPI(t *testing.T) {
 	}
 
 	h := Handler{
-		DB:             nil,
-		FlagSaveToFile: false,
-		FlagSaveToDB:   false,
-		FlagBaseAddr:   "http://localhost:8000/",
+		FlagBaseAddr: "http://localhost:8000/",
 	}
 
 	for _, v := range testCases {
-		h.Memory = &v.store
+		memory := &v.store
+		srv := service.New(memory)
+		h.Service = srv
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
@@ -123,10 +124,7 @@ func TestReceiveManyURLAPI(t *testing.T) {
 	}
 
 	h := Handler{
-		DB:             nil,
-		FlagSaveToFile: false,
-		FlagSaveToDB:   false,
-		FlagBaseAddr:   "http://localhost:8000/",
+		FlagBaseAddr: "http://localhost:8000/",
 	}
 
 	for _, tt := range tests {
@@ -146,7 +144,10 @@ func TestReceiveManyURLAPI(t *testing.T) {
 			memory, err := store.New(h.Logger)
 			require.NoError(t, err)
 
-			h.Memory = memory
+			srv := service.New(memory)
+			h.Service = srv
+
+			h.Service = srv
 
 			r, err := runTestServer(h)
 			require.NoError(t, err)

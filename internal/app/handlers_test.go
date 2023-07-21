@@ -8,7 +8,9 @@ import (
 	"testing"
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
-	store "github.com/Pizhlo/yandex-shortener/storage"
+	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	store "github.com/Pizhlo/yandex-shortener/storage/memory"
+	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +29,7 @@ func TestGetURL(t *testing.T) {
 			name:    "positive test #1",
 			request: "/YjhkNDY",
 			store: store.LinkStorage{
-				Store: []store.Link{
+				Store: []model.Link{
 					{
 						ID:          uuid.New(),
 						ShortURL:    "YjhkNDY",
@@ -41,7 +43,7 @@ func TestGetURL(t *testing.T) {
 			name:    "positive test #2",
 			request: "/" + util.Shorten("Y2NlMzI"),
 			store: store.LinkStorage{
-				Store: []store.Link{
+				Store: []model.Link{
 					{
 						ID:          uuid.New(),
 						ShortURL:    util.Shorten("Y2NlMzI"),
@@ -55,21 +57,21 @@ func TestGetURL(t *testing.T) {
 			name:    "not found",
 			request: "/" + util.Shorten("asdasda"),
 			store: store.LinkStorage{
-				Store: []store.Link{},
+				Store: []model.Link{},
 			},
 			statusCode: http.StatusNotFound,
 		},
 	}
 
 	h := Handler{
-		DB:             nil,
-		FlagSaveToFile: false,
-		FlagSaveToDB:   false,
-		FlagBaseAddr:   "http://localhost:8000/",
+		Service:      &service.Service{},
+		FlagBaseAddr: "http://localhost:8000/",
 	}
 
 	for _, v := range tests {
-		h.Memory = &v.store
+		memory := &v.store
+		srv := service.New(memory)
+		h.Service = srv
 
 		logger := log.Logger{}
 
@@ -85,7 +87,7 @@ func TestGetURL(t *testing.T) {
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
-		
+
 		ts := httptest.NewServer(r)
 		defer ts.Close()
 
@@ -113,7 +115,7 @@ func TestReceiveURL(t *testing.T) {
 			name:    "positive test #1",
 			request: "/",
 			store: store.LinkStorage{
-				Store: []store.Link{},
+				Store: []model.Link{},
 			},
 			statusCode:   http.StatusCreated,
 			body:         []byte("https://practicum.yandex.ru/"),
@@ -123,7 +125,7 @@ func TestReceiveURL(t *testing.T) {
 			name:    "positive test #2",
 			request: "/",
 			store: store.LinkStorage{
-				Store: []store.Link{},
+				Store: []model.Link{},
 			},
 			statusCode:   http.StatusCreated,
 			body:         []byte("EwHXdJfB"),
@@ -133,7 +135,7 @@ func TestReceiveURL(t *testing.T) {
 			name:    "negative test",
 			request: "/",
 			store: store.LinkStorage{
-				Store: []store.Link{},
+				Store: []model.Link{},
 			},
 			statusCode:   http.StatusCreated,
 			body:         []byte(""),
@@ -142,14 +144,14 @@ func TestReceiveURL(t *testing.T) {
 	}
 
 	h := Handler{
-		DB:             nil,
-		FlagSaveToFile: false,
-		FlagSaveToDB:   false,
-		FlagBaseAddr:   "http://localhost:8000/",
+		Service:      &service.Service{},
+		FlagBaseAddr: "http://localhost:8000/",
 	}
 
 	for _, v := range tests {
-		h.Memory = &v.store
+		memory := &v.store
+		srv := service.New(memory)
+		h.Service = srv
 
 		logger := log.Logger{}
 

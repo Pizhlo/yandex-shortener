@@ -11,7 +11,10 @@ import (
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
-	store "github.com/Pizhlo/yandex-shortener/storage"
+	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	store "github.com/Pizhlo/yandex-shortener/storage/file"
+	memory "github.com/Pizhlo/yandex-shortener/storage/memory"
+	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -41,9 +44,6 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 	}
 
 	h := Handler{
-		DB:             nil,
-		FlagSaveToFile: true,
-		FlagSaveToDB:   false,
 		FlagPathToFile: "tmp/short-url-db-test.json",
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
@@ -61,15 +61,10 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.Logger)
+		memory, err := store.New(h.FlagPathToFile)
 		require.NoError(t, err)
 
-		fileStorage, err := store.NewFileStorage(h.FlagPathToFile)
-		require.NoError(t, err)
-
-		memory.FileStorage = *fileStorage
-
-		h.Memory = memory
+		h.Service = service.New(memory)
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
@@ -98,14 +93,14 @@ func TestGetURLFileStorage(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
-		store      store.LinkStorage
+		store      memory.LinkStorage
 		statusCode int
 	}{
 		{
 			name:    "positive test #1",
 			request: "/MGRkMTk",
-			store: store.LinkStorage{
-				Store: []store.Link{
+			store: memory.LinkStorage{
+				Store: []model.Link{
 					{
 						ID:          uuid.New(),
 						ShortURL:    "MGRkMTk",
@@ -118,8 +113,8 @@ func TestGetURLFileStorage(t *testing.T) {
 		{
 			name:    "not found",
 			request: "/" + util.Shorten("ODczZGQ"),
-			store: store.LinkStorage{
-				Store: []store.Link{
+			store: memory.LinkStorage{
+				Store: []model.Link{
 					{
 						ID:          uuid.New(),
 						ShortURL:    util.Shorten("ODczZGQ"),
@@ -132,17 +127,14 @@ func TestGetURLFileStorage(t *testing.T) {
 		{
 			name:    "not found",
 			request: "/" + util.Shorten("asdasda"),
-			store: store.LinkStorage{
-				Store: []store.Link{},
+			store: memory.LinkStorage{
+				Store: []model.Link{},
 			},
 			statusCode: http.StatusNotFound,
 		},
 	}
 
 	h := Handler{
-		DB:             nil,
-		FlagSaveToFile: true,
-		FlagSaveToDB:   false,
 		FlagPathToFile: "tmp/short-url-db-test.json",
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
@@ -160,12 +152,11 @@ func TestGetURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		h.Memory = &v.store
-
-		fileStorage, err := store.NewFileStorage(h.FlagPathToFile)
+		//h.Memory = &v.store
+		fs, err := store.New(h.FlagPathToFile)
 		require.NoError(t, err)
 
-		h.Memory.FileStorage = *fileStorage
+		h.Service = service.New(fs)
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
@@ -216,9 +207,6 @@ func TestReceiveURLFileStorage(t *testing.T) {
 	}
 
 	h := Handler{
-		DB:             nil,
-		FlagSaveToFile: true,
-		FlagSaveToDB:   false,
 		FlagPathToFile: "tmp/short-url-db-test.json",
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
@@ -236,15 +224,10 @@ func TestReceiveURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.Logger)
+		memory, err := store.New(h.FlagPathToFile)
 		require.NoError(t, err)
 
-		fileStorage, err := store.NewFileStorage(h.FlagPathToFile)
-		require.NoError(t, err)
-
-		memory.FileStorage = *fileStorage
-
-		h.Memory = memory
+		h.Service = service.New(memory)
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
@@ -316,9 +299,6 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 	}
 
 	h := Handler{
-		DB:             nil,
-		FlagSaveToFile: true,
-		FlagSaveToDB:   false,
 		FlagPathToFile: "tmp/short-url-db-test.json",
 		FlagBaseAddr:   "http://localhost:8000/",
 	}
@@ -337,15 +317,10 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 			logger.Sugar = sugar
 			h.Logger = logger
 
-			memory, err := store.New(h.Logger)
+			memory, err := store.New(h.FlagPathToFile)
 			require.NoError(t, err)
 
-			fileStorage, err := store.NewFileStorage(h.FlagPathToFile)
-			require.NoError(t, err)
-
-			memory.FileStorage = *fileStorage
-
-			h.Memory = memory
+			h.Service = service.New(memory)
 
 			r, err := runTestServer(h)
 			require.NoError(t, err)
