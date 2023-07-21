@@ -46,7 +46,7 @@ func main() {
 		}
 		srv = service.New(db)
 	} else if conf.FlagSaveToFile {
-		storage, err := file.New(conf.FlagPathToFile)
+		storage, err := file.New(conf.FlagPathToFile, logger)
 		if err != nil {
 			logger.Sugar.Fatal("error while creating file storage: ", zap.Error(err))
 		}

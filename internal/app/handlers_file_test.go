@@ -13,10 +13,7 @@ import (
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	"github.com/Pizhlo/yandex-shortener/internal/app/service"
 	store "github.com/Pizhlo/yandex-shortener/storage/file"
-	memory "github.com/Pizhlo/yandex-shortener/storage/memory"
-	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -61,7 +58,7 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.FlagPathToFile)
+		memory, err := store.New(h.FlagPathToFile, h.Logger)
 		require.NoError(t, err)
 
 		h.Service = service.New(memory)
@@ -91,46 +88,32 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 
 func TestGetURLFileStorage(t *testing.T) {
 	tests := []struct {
-		name       string
-		request    string
-		store      memory.LinkStorage
-		statusCode int
+		name         string
+		request      string
+		statusCode   int
+		expectedBody models.Response
 	}{
 		{
-			name:    "positive test #1",
-			request: "/MGRkMTk",
-			store: memory.LinkStorage{
-				Store: []model.Link{
-					{
-						ID:          uuid.New(),
-						ShortURL:    "MGRkMTk",
-						OriginalURL: "https://practicum.yandex.ru/",
-					},
-				},
-			},
+			name:       "positive test #1",
+			request:    "/NmJkYjV",
 			statusCode: http.StatusTemporaryRedirect,
+			expectedBody: models.Response{
+				Result: "https://practicum.yandex.ru",
+			},
 		},
 		{
-			name:    "not found",
-			request: "/" + util.Shorten("ODczZGQ"),
-			store: memory.LinkStorage{
-				Store: []model.Link{
-					{
-						ID:          uuid.New(),
-						ShortURL:    util.Shorten("ODczZGQ"),
-						OriginalURL: "EwHXdJfB",
-					},
-				},
-			},
+			name:       "positive test #2",
+			request:    "/NjYyNjB",
 			statusCode: http.StatusTemporaryRedirect,
+			expectedBody: models.Response{
+				Result: "mail2.ru",
+			},
 		},
 		{
-			name:    "not found",
-			request: "/" + util.Shorten("asdasda"),
-			store: memory.LinkStorage{
-				Store: []model.Link{},
-			},
+			name:       "not found",
+			request:    "/" + util.Shorten("not found"),
 			statusCode: http.StatusNotFound,
+			expectedBody: models.Response{},
 		},
 	}
 
@@ -152,8 +135,7 @@ func TestGetURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		//h.Memory = &v.store
-		fs, err := store.New(h.FlagPathToFile)
+		fs, err := store.New(h.FlagPathToFile, h.Logger)
 		require.NoError(t, err)
 
 		h.Service = service.New(fs)
@@ -170,7 +152,7 @@ func TestGetURLFileStorage(t *testing.T) {
 		assert.Equal(t, v.statusCode, resp.StatusCode)
 
 		if v.statusCode != http.StatusNotFound {
-			assert.Equal(t, v.store.Store[0].OriginalURL, resp.Header.Get("Location"))
+			assert.Equal(t, v.expectedBody.Result, resp.Header.Get("Location"))
 		}
 	}
 }
@@ -224,7 +206,7 @@ func TestReceiveURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.FlagPathToFile)
+		memory, err := store.New(h.FlagPathToFile, h.Logger)
 		require.NoError(t, err)
 
 		h.Service = service.New(memory)
@@ -317,7 +299,7 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 			logger.Sugar = sugar
 			h.Logger = logger
 
-			memory, err := store.New(h.FlagPathToFile)
+			memory, err := store.New(h.FlagPathToFile, h.Logger)
 			require.NoError(t, err)
 
 			h.Service = service.New(memory)
