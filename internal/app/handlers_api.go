@@ -1,10 +1,8 @@
 package app
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
@@ -27,8 +25,7 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
+	ctx := r.Context()
 
 	shortURL := util.Shorten(req.URL)
 
@@ -99,8 +96,7 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-	defer cancel()
+	ctx := r.Context()
 
 	statusCode := http.StatusCreated
 	var path string
