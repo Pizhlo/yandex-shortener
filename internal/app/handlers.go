@@ -89,7 +89,7 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database) {
 	// ping
 
-	err := db.Ping()
+	err := db.Ping(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
