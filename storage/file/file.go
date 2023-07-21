@@ -74,6 +74,10 @@ func (f *FileStorage) Save(ctx context.Context, link model.Link, logger log.Logg
 
 	logger.Sugar.Debugf("link: %#v\n", link)
 
+	if err := f.Memory.Save(ctx, link, logger); err != nil {
+		return err
+	}
+
 	return f.encoder.Encode(&link)
 }
 
