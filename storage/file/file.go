@@ -6,19 +6,19 @@ import (
 	"io"
 	"os"
 
-	"github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
+	"github.com/Pizhlo/yandex-shortener/storage/memory"
 )
 
 type FileStorage struct {
-	FlagSaveToFile bool
+	Memory         storage.LinkStorage
 	file           *os.File
 	encoder        *json.Encoder
 	decoder        *json.Decoder
 }
 
-func New(filename string) (*FileStorage, error) {
+func New(filename string, logger log.Logger) (*FileStorage, error) {
 	fileStorage := &FileStorage{}
 	if err := os.MkdirAll("tmp", os.ModePerm); err != nil {
 		return fileStorage, err
@@ -29,10 +29,22 @@ func New(filename string) (*FileStorage, error) {
 		return fileStorage, err
 	}
 
-	fileStorage.FlagSaveToFile = true
+	memory, err := storage.New(logger)
+	if err != nil {
+		return fileStorage, err
+	}
+
+	fileStorage.Memory = *memory
 	fileStorage.file = file
 	fileStorage.decoder = json.NewDecoder(file)
 	fileStorage.encoder = json.NewEncoder(file)
+
+	links, err := fileStorage.RecoverData(logger)
+	if err != nil {
+		return fileStorage, err
+	}
+
+	fileStorage.Memory.Store = links
 
 	return fileStorage, nil
 }
@@ -52,6 +64,8 @@ func (f *FileStorage) RecoverData(logger log.Logger) ([]model.Link, error) {
 		links = append(links, link)
 	}
 
+	//logger.Sugar.Debug("links = ", links)
+
 	return links, nil
 }
 
@@ -63,8 +77,8 @@ func (f *FileStorage) Save(ctx context.Context, link model.Link, logger log.Logg
 	return f.encoder.Encode(&link)
 }
 
-func (f *FileStorage) Get(ctx context.Context, short string, logger logger.Logger) (string, error) {
-	return "", nil
+func (f *FileStorage) Get(ctx context.Context, short string, logger log.Logger) (string, error) {
+	return f.Memory.Get(ctx, short, logger)
 }
 
 func (f *FileStorage) Close() error {
