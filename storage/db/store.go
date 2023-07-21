@@ -20,7 +20,7 @@ type Database struct {
 }
 
 func New(databaseAddr string) (*Database, error) {
-	var db *Database
+	db := &Database{}
 	conn, err := pgx.Connect(context.Background(), databaseAddr)
 	if err != nil {
 		return db, err
@@ -58,8 +58,8 @@ CREATE UNIQUE INDEX ON "urls" ("original_url");`
 	return tx.Commit(ctx)
 }
 
-func (db *Database) Ping() error {
-	return db.PgConn().Ping(context.TODO())
+func (db *Database) Ping(ctx context.Context) error {
+	return db.PgConn().Ping(ctx)
 }
 
 func (db *Database) Save(ctx context.Context, link model.Link, logger log.Logger) error {
