@@ -41,8 +41,7 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 	}
 
 	h := Handler{
-		FlagPathToFile: "tmp/short-url-db-test.json",
-		FlagBaseAddr:   "http://localhost:8000/",
+		FlagBaseAddr: "http://localhost:8000/",
 	}
 
 	for _, v := range testCases {
@@ -58,10 +57,12 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.FlagPathToFile, h.Logger)
+		filename := "tmp/short-url-db-test.json"
+
+		fs, err := store.New(filename, h.Logger)
 		require.NoError(t, err)
 
-		h.Service = service.New(memory)
+		h.Service = service.New(fs)
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
@@ -110,16 +111,15 @@ func TestGetURLFileStorage(t *testing.T) {
 			},
 		},
 		{
-			name:       "not found",
-			request:    "/" + util.Shorten("not found"),
-			statusCode: http.StatusNotFound,
+			name:         "not found",
+			request:      "/" + util.Shorten("not found"),
+			statusCode:   http.StatusNotFound,
 			expectedBody: models.Response{},
 		},
 	}
 
 	h := Handler{
-		FlagPathToFile: "tmp/short-url-db-test.json",
-		FlagBaseAddr:   "http://localhost:8000/",
+		FlagBaseAddr: "http://localhost:8000/",
 	}
 
 	for _, v := range tests {
@@ -135,7 +135,9 @@ func TestGetURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		fs, err := store.New(h.FlagPathToFile, h.Logger)
+		filename := "tmp/short-url-db-test.json"
+
+		fs, err := store.New(filename, h.Logger)
 		require.NoError(t, err)
 
 		h.Service = service.New(fs)
@@ -189,8 +191,7 @@ func TestReceiveURLFileStorage(t *testing.T) {
 	}
 
 	h := Handler{
-		FlagPathToFile: "tmp/short-url-db-test.json",
-		FlagBaseAddr:   "http://localhost:8000/",
+		FlagBaseAddr: "http://localhost:8000/",
 	}
 
 	for _, v := range tests {
@@ -206,10 +207,12 @@ func TestReceiveURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		memory, err := store.New(h.FlagPathToFile, h.Logger)
+		filename := "tmp/short-url-db-test.json"
+
+		fs, err := store.New(filename, h.Logger)
 		require.NoError(t, err)
 
-		h.Service = service.New(memory)
+		h.Service = service.New(fs)
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
@@ -281,8 +284,7 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 	}
 
 	h := Handler{
-		FlagPathToFile: "tmp/short-url-db-test.json",
-		FlagBaseAddr:   "http://localhost:8000/",
+		FlagBaseAddr: "http://localhost:8000/",
 	}
 
 	for _, tt := range tests {
@@ -299,10 +301,12 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 			logger.Sugar = sugar
 			h.Logger = logger
 
-			memory, err := store.New(h.FlagPathToFile, h.Logger)
+			filename := "tmp/short-url-db-test.json"
+
+			fs, err := store.New(filename, h.Logger)
 			require.NoError(t, err)
 
-			h.Service = service.New(memory)
+			h.Service = service.New(fs)
 
 			r, err := runTestServer(h)
 			require.NoError(t, err)
