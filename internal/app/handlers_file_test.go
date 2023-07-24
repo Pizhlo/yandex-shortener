@@ -24,6 +24,7 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 		name         string
 		method       string
 		body         models.Request
+		filename     string
 		request      string
 		expectedCode int
 		expectedBody models.Response
@@ -32,6 +33,7 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 			name:         "positive test",
 			method:       http.MethodPost,
 			body:         models.Request{URL: "https://practicum.yandex.ru"},
+			filename:     "tmp/short-url-db-test.json",
 			request:      "/api/shorten",
 			expectedCode: http.StatusCreated,
 			expectedBody: models.Response{
@@ -57,9 +59,7 @@ func TestReceiveURLAPIFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		filename := "tmp/short-url-db-test.json"
-
-		fs, err := store.New(filename, h.Logger)
+		fs, err := store.New(v.filename, h.Logger)
 		require.NoError(t, err)
 
 		h.Service = service.New(fs)
@@ -92,11 +92,13 @@ func TestGetURLFileStorage(t *testing.T) {
 		name         string
 		request      string
 		statusCode   int
+		filename     string
 		expectedBody models.Response
 	}{
 		{
 			name:       "positive test #1",
 			request:    "/NmJkYjV",
+			filename:   "tmp/short-url-db-test.json",
 			statusCode: http.StatusTemporaryRedirect,
 			expectedBody: models.Response{
 				Result: "https://practicum.yandex.ru",
@@ -105,6 +107,7 @@ func TestGetURLFileStorage(t *testing.T) {
 		{
 			name:       "positive test #2",
 			request:    "/NjYyNjB",
+			filename:   "tmp/short-url-db-test.json",
 			statusCode: http.StatusTemporaryRedirect,
 			expectedBody: models.Response{
 				Result: "mail2.ru",
@@ -113,6 +116,7 @@ func TestGetURLFileStorage(t *testing.T) {
 		{
 			name:         "not found",
 			request:      "/" + util.Shorten("not found"),
+			filename:     "tmp/short-url-db-test.json",
 			statusCode:   http.StatusNotFound,
 			expectedBody: models.Response{},
 		},
@@ -135,9 +139,7 @@ func TestGetURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		filename := "tmp/short-url-db-test.json"
-
-		fs, err := store.New(filename, h.Logger)
+		fs, err := store.New(v.filename, h.Logger)
 		require.NoError(t, err)
 
 		h.Service = service.New(fs)
@@ -164,6 +166,7 @@ func TestReceiveURLFileStorage(t *testing.T) {
 		name         string
 		request      string
 		statusCode   int
+		filename     string
 		body         []byte
 		expectedBody string
 	}{
@@ -171,6 +174,7 @@ func TestReceiveURLFileStorage(t *testing.T) {
 			name:         "positive test #1",
 			request:      "/",
 			statusCode:   http.StatusCreated,
+			filename:     "tmp/short-url-db-test.json",
 			body:         []byte("https://practicum.yandex.ru/"),
 			expectedBody: "http://localhost:8000/MGRkMTk",
 		},
@@ -178,6 +182,7 @@ func TestReceiveURLFileStorage(t *testing.T) {
 			name:         "positive test #2",
 			request:      "/",
 			statusCode:   http.StatusCreated,
+			filename:     "tmp/short-url-db-test.json",
 			body:         []byte("EwHXdJfB"),
 			expectedBody: "http://localhost:8000/ODczZGQ",
 		},
@@ -185,6 +190,7 @@ func TestReceiveURLFileStorage(t *testing.T) {
 			name:         "negative test",
 			request:      "/",
 			statusCode:   http.StatusCreated,
+			filename:     "tmp/short-url-db-test.json",
 			body:         []byte(""),
 			expectedBody: "http://localhost:8000/ZDQxZDh",
 		},
@@ -207,9 +213,7 @@ func TestReceiveURLFileStorage(t *testing.T) {
 		logger.Sugar = sugar
 		h.Logger = logger
 
-		filename := "tmp/short-url-db-test.json"
-
-		fs, err := store.New(filename, h.Logger)
+		fs, err := store.New(v.filename, h.Logger)
 		require.NoError(t, err)
 
 		h.Service = service.New(fs)
@@ -239,6 +243,7 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 		method       string
 		request      string
 		expectedCode int
+		filename     string
 		body         []models.RequestAPI
 		expectedBody []models.ResponseAPI
 	}
@@ -252,6 +257,7 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 				method:       http.MethodPost,
 				request:      "/api/shorten/batch",
 				expectedCode: http.StatusCreated,
+				filename:     "tmp/short-url-db-test.json",
 				body: []models.RequestAPI{
 					{
 						ID:  "e169d217-d3c8-493a-930f-7432368139c7",
@@ -301,9 +307,7 @@ func TestReceiveManyURLAPIFileStorage(t *testing.T) {
 			logger.Sugar = sugar
 			h.Logger = logger
 
-			filename := "tmp/short-url-db-test.json"
-
-			fs, err := store.New(filename, h.Logger)
+			fs, err := store.New(tt.args.filename, h.Logger)
 			require.NoError(t, err)
 
 			h.Service = service.New(fs)
