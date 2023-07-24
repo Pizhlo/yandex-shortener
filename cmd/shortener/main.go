@@ -7,7 +7,10 @@ import (
 	internal "github.com/Pizhlo/yandex-shortener/internal/app"
 	"github.com/Pizhlo/yandex-shortener/internal/app/compress"
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
-	"github.com/Pizhlo/yandex-shortener/storage"
+	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	storage "github.com/Pizhlo/yandex-shortener/storage/db"
+	file "github.com/Pizhlo/yandex-shortener/storage/file"
+	memory "github.com/Pizhlo/yandex-shortener/storage/memory"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"go.uber.org/zap"
@@ -16,36 +19,67 @@ import (
 func main() {
 	conf := config.ParseConfigAndFlags()
 
-	logger, err := zap.NewDevelopment()
+	logger := log.Logger{}
+
+	zapLogger, err := zap.NewDevelopment()
 	if err != nil {
-		log.Sugar.Fatal("error while creating sugar: ", zap.Error(err))
+		zapLogger.Fatal("error while creating sugar: ", zap.Error(err))
 	}
-	defer logger.Sync()
+	defer zapLogger.Sync()
 
-	log.Sugar = *logger.Sugar()
+	sugar := *zapLogger.Sugar()
 
-	log.Sugar.Infow(
+	logger.Sugar = sugar
+
+	logger.Sugar.Infow(
 		"Starting server",
 		"addr", conf.FlagRunAddr,
 	)
 
-	storage, err := storage.New(conf.FlagSaveToFile, conf.FlagPathToFile)
-	if err != nil {
-		log.Sugar.Fatal("error while creating storage: ", zap.Error(err))
+	var srv *service.Service
+	var db *storage.URLStorage
+
+	if conf.FlagSaveToDB {
+		conn, err := storage.Connect(conf.FlagDatabaseAddress)
+		if err != nil {
+			logger.Sugar.Fatal("error while creating db connection: ", zap.Error(err))
+		}
+
+		db, err = storage.New(conn)
+		if err != nil {
+			logger.Sugar.Fatal("error while creating db: ", zap.Error(err))
+		}
+
+		srv = service.New(db)
+	} else if conf.FlagSaveToFile {
+		storage, err := file.New(conf.FlagPathToFile, logger)
+		if err != nil {
+			logger.Sugar.Fatal("error while creating file storage: ", zap.Error(err))
+		}
+
+		srv = service.New(storage)
+	} else {
+		storage, err := memory.New(logger)
+		if err != nil {
+			logger.Sugar.Fatal("error while creating memory storage: ", zap.Error(err))
+		}
+		srv = service.New(storage)
 	}
 
-	if conf.FlagSaveToFile {
-		defer storage.FileStorage.Close()
+	handler := internal.Handler{
+		Service:        srv,
+		Logger:         logger,
+		FlagBaseAddr:   conf.FlagBaseAddr,
 	}
 
-	if err := http.ListenAndServe(conf.FlagRunAddr, Run(conf, storage)); err != nil {
-		log.Sugar.Fatal("error while executing server: ", zap.Error(err))
+	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler, db)); err != nil {
+		logger.Sugar.Fatal("error while executing server: ", zap.Error(err))
 	}
 }
 
-func Run(conf config.Config, store *storage.LinkStorage) chi.Router {
+func Run(handler internal.Handler, db *storage.URLStorage) chi.Router {
 	r := chi.NewRouter()
-	r.Use(log.WithLogging)
+	r.Use(handler.Logger.WithLogging)
 	r.Use(compress.UnpackData)
 
 	r.Use(middleware.Compress(5, "application/javascript",
@@ -56,19 +90,28 @@ func Run(conf config.Config, store *storage.LinkStorage) chi.Router {
 		"text/xml"))
 
 	r.Get("/{id}", func(rw http.ResponseWriter, r *http.Request) {
-		internal.GetURL(store, rw, r)
+		internal.GetURL(handler, rw, r)
 	})
+
 	r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-		internal.ReceiveURL(store, rw, r, conf.FlagBaseAddr, conf.FlagSaveToFile)
+		internal.ReceiveURL(handler, rw, r)
 	})
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AllowContentType("application/json"))
 		r.Route("/api", func(r chi.Router) {
 			r.Post("/shorten", func(rw http.ResponseWriter, r *http.Request) {
-				internal.ReceiveURLAPI(store, rw, r, conf.FlagBaseAddr, conf.FlagSaveToFile)
+				internal.ReceiveURLAPI(handler, rw, r)
+			})
+
+			r.Post("/shorten/batch", func(rw http.ResponseWriter, r *http.Request) {
+				internal.ReceiveManyURLAPI(handler, rw, r)
 			})
 		})
+	})
+
+	r.Get("/ping", func(rw http.ResponseWriter, r *http.Request) {
+		internal.Ping(rw, r, db)
 	})
 
 	return r
