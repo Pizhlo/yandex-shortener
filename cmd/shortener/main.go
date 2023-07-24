@@ -63,7 +63,6 @@ func main() {
 		Service:        srv,
 		Logger:         logger,
 		FlagBaseAddr:   conf.FlagBaseAddr,
-		FlagPathToFile: conf.FlagPathToFile,
 	}
 
 	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler, db)); err != nil {

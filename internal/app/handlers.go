@@ -18,7 +18,6 @@ type Handler struct {
 	Service        *service.Service
 	Logger         log.Logger
 	FlagBaseAddr   string
-	FlagPathToFile string
 }
 
 func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
