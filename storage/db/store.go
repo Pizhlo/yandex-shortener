@@ -1,4 +1,4 @@
-package storage
+package db
 
 import (
 	"context"
@@ -12,27 +12,24 @@ import (
 )
 
 type Store interface {
+	CreateTableURLs() error
 	Ping() error
+	Save(ctx context.Context, link model.Link, logger log.Logger) error
+	Get(ctx context.Context, short string, logger log.Logger) (string, error)
 }
 
-type Database struct {
+type URLStorage struct {
 	*pgx.Conn
 }
 
-func New(databaseAddr string) (*Database, error) {
-	db := &Database{}
-	conn, err := pgx.Connect(context.Background(), databaseAddr)
-	if err != nil {
-		return db, err
-	}
-
-	db.Conn = conn
+func New(conn *pgx.Conn) (*URLStorage, error) {
+	db := &URLStorage{conn}	
 
 	return db, db.CreateTableURLs()
 
 }
 
-func (db *Database) CreateTableURLs() error {
+func (db *URLStorage) CreateTableURLs() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
 	defer cancel()
 
@@ -58,11 +55,11 @@ CREATE UNIQUE INDEX ON "urls" ("original_url");`
 	return tx.Commit(ctx)
 }
 
-func (db *Database) Ping(ctx context.Context) error {
+func (db *URLStorage) Ping(ctx context.Context) error {
 	return db.PgConn().Ping(ctx)
 }
 
-func (db *Database) Save(ctx context.Context, link model.Link, logger log.Logger) error {
+func (db *URLStorage) Save(ctx context.Context, link model.Link, logger log.Logger) error {
 	logger.Sugar.Debug("SaveLinkDB")
 
 	logger.Sugar.Debugf("INSERT INTO urls (id, short_url, original_url) VALUES(%s, %s, %s)\n", link.ID, link.ShortURL, link.OriginalURL)
@@ -78,7 +75,7 @@ func (db *Database) Save(ctx context.Context, link model.Link, logger log.Logger
 	return nil
 }
 
-func (db *Database) Get(ctx context.Context, short string, logger log.Logger) (string, error) {
+func (db *URLStorage) Get(ctx context.Context, short string, logger log.Logger) (string, error) {
 	logger.Sugar.Debug("GetLinkByIDFromDB")
 
 	var originalURL string

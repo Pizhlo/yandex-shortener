@@ -12,7 +12,7 @@ import (
 )
 
 type FileStorage struct {
-	Memory         storage.LinkStorage
+	Memory         storage.Memory
 	file           *os.File
 	encoder        *json.Encoder
 	decoder        *json.Decoder

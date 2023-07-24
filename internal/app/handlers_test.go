@@ -22,13 +22,13 @@ func TestGetURL(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    string
-		store      store.LinkStorage
+		store      store.Memory
 		statusCode int
 	}{
 		{
 			name:    "positive test #1",
 			request: "/YjhkNDY",
-			store: store.LinkStorage{
+			store: store.Memory{
 				Store: []model.Link{
 					{
 						ID:          uuid.New(),
@@ -42,7 +42,7 @@ func TestGetURL(t *testing.T) {
 		{
 			name:    "positive test #2",
 			request: "/" + util.Shorten("Y2NlMzI"),
-			store: store.LinkStorage{
+			store: store.Memory{
 				Store: []model.Link{
 					{
 						ID:          uuid.New(),
@@ -56,7 +56,7 @@ func TestGetURL(t *testing.T) {
 		{
 			name:    "not found",
 			request: "/" + util.Shorten("asdasda"),
-			store: store.LinkStorage{
+			store: store.Memory{
 				Store: []model.Link{},
 			},
 			statusCode: http.StatusNotFound,
@@ -106,7 +106,7 @@ func TestReceiveURL(t *testing.T) {
 	tests := []struct {
 		name         string
 		request      string
-		store        store.LinkStorage
+		store        store.Memory
 		statusCode   int
 		body         []byte
 		expectedBody string
@@ -114,7 +114,7 @@ func TestReceiveURL(t *testing.T) {
 		{
 			name:    "positive test #1",
 			request: "/",
-			store: store.LinkStorage{
+			store: store.Memory{
 				Store: []model.Link{},
 			},
 			statusCode:   http.StatusCreated,
@@ -124,7 +124,7 @@ func TestReceiveURL(t *testing.T) {
 		{
 			name:    "positive test #2",
 			request: "/",
-			store: store.LinkStorage{
+			store: store.Memory{
 				Store: []model.Link{},
 			},
 			statusCode:   http.StatusCreated,
@@ -134,7 +134,7 @@ func TestReceiveURL(t *testing.T) {
 		{
 			name:    "negative test",
 			request: "/",
-			store: store.LinkStorage{
+			store: store.Memory{
 				Store: []model.Link{},
 			},
 			statusCode:   http.StatusCreated,

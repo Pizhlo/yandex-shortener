@@ -37,19 +37,26 @@ func main() {
 	)
 
 	var srv *service.Service
-	var db *storage.Database
+	var db *storage.URLStorage
 
 	if conf.FlagSaveToDB {
-		db, err = storage.New(conf.FlagDatabaseAddress)
+		conn, err := storage.Connect(conf.FlagDatabaseAddress)
 		if err != nil {
-			logger.Sugar.Fatal("error while connecting db: ", zap.Error(err))
+			logger.Sugar.Fatal("error while creating db connection: ", zap.Error(err))
 		}
+
+		db, err = storage.New(conn)
+		if err != nil {
+			logger.Sugar.Fatal("error while creating db: ", zap.Error(err))
+		}
+
 		srv = service.New(db)
 	} else if conf.FlagSaveToFile {
 		storage, err := file.New(conf.FlagPathToFile, logger)
 		if err != nil {
 			logger.Sugar.Fatal("error while creating file storage: ", zap.Error(err))
 		}
+
 		srv = service.New(storage)
 	} else {
 		storage, err := memory.New(logger)
@@ -70,7 +77,7 @@ func main() {
 	}
 }
 
-func Run(handler internal.Handler, db *storage.Database) chi.Router {
+func Run(handler internal.Handler, db *storage.URLStorage) chi.Router {
 	r := chi.NewRouter()
 	r.Use(handler.Logger.WithLogging)
 	r.Use(compress.UnpackData)

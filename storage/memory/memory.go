@@ -8,18 +8,18 @@ import (
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 )
 
-type LinkStorage struct {
+type Memory struct {
 	Store []model.Link
 }
 
-func New(logger log.Logger) (*LinkStorage, error) {
-	linkStorage := &LinkStorage{}
-	linkStorage.Store = []model.Link{}
+func New(logger log.Logger) (*Memory, error) {
+	memory := &Memory{}
+	memory.Store = []model.Link{}
 
-	return linkStorage, nil
+	return memory, nil
 }
 
-func (s *LinkStorage) Get(ctx context.Context, short string, logger log.Logger) (string, error) {
+func (s *Memory) Get(ctx context.Context, short string, logger log.Logger) (string, error) {
 	logger.Sugar.Debug("GetLinkByID")
 
 	logger.Sugar.Debug("shortURL = ", short)
@@ -34,7 +34,7 @@ func (s *LinkStorage) Get(ctx context.Context, short string, logger log.Logger) 
 	return "", errors.ErrNotFound
 }
 
-func (s *LinkStorage) Save(ctx context.Context, link model.Link, logger log.Logger) error {
+func (s *Memory) Save(ctx context.Context, link model.Link, logger log.Logger) error {
 	logger.Sugar.Debug("SaveLink")
 
 	logger.Sugar.Debug("shortURL = ", link.ShortURL, "original URL = ", link.OriginalURL)

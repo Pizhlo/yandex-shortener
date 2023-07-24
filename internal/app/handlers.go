@@ -85,7 +85,7 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
 }
 
-func Ping(w http.ResponseWriter, r *http.Request, db *storage.Database) {
+func Ping(w http.ResponseWriter, r *http.Request, db *storage.URLStorage) {
 	// ping
 
 	err := db.Ping(r.Context())

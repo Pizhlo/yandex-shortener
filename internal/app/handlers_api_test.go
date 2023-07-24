@@ -22,7 +22,7 @@ func TestReceiveURLAPI(t *testing.T) {
 		name         string
 		method       string
 		body         models.Request
-		store        store.LinkStorage
+		store        store.Memory
 		request      string
 		expectedCode int
 		expectedBody models.Response
@@ -31,7 +31,7 @@ func TestReceiveURLAPI(t *testing.T) {
 			name:   "positive test",
 			method: http.MethodPost,
 			body:   models.Request{URL: "https://practicum.yandex.ru"},
-			store: store.LinkStorage{
+			store: store.Memory{
 				Store: []model.Link{},
 			},
 			request:      "/api/shorten",
