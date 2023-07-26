@@ -68,9 +68,9 @@ func main() {
 	}
 
 	handler := internal.Handler{
-		Service:        srv,
-		Logger:         logger,
-		FlagBaseAddr:   conf.FlagBaseAddr,
+		Service:      srv,
+		Logger:       logger,
+		FlagBaseAddr: conf.FlagBaseAddr,
 	}
 
 	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler, db)); err != nil {
@@ -80,9 +80,10 @@ func main() {
 
 func Run(handler internal.Handler, db *storage.URLStorage) chi.Router {
 	r := chi.NewRouter()
-	r.Use(handler.Logger.WithLogging)
+
 	r.Use(compress.UnpackData)
 	r.Use(session.CookieMiddleware)
+	r.Use(handler.Logger.WithLogging)
 
 	r.Use(middleware.Compress(5, "application/javascript",
 		"application/json",
