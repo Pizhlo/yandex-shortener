@@ -33,14 +33,18 @@ func CookieMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
-		valid, err := validToken(cookie.Value)
+		var valid bool
 
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		if cookie != nil {
+			valid, err = validToken(cookie.Value)
+
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
 
-		if !valid {
+		if !valid || cookie == nil {
 			userID := uuid.New()
 			makeCookie(w, userID)
 		}
