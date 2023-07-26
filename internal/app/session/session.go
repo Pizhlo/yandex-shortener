@@ -28,6 +28,7 @@ func CookieMiddleware(next http.Handler) http.Handler {
 				makeCookie(w, userID)
 				next.ServeHTTP(w, r)
 			} else {
+				fmt.Println("CookieMiddleware r.Cookie err = ", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -39,6 +40,7 @@ func CookieMiddleware(next http.Handler) http.Handler {
 			valid, err = validToken(cookie.Value)
 
 			if err != nil {
+				fmt.Println("CookieMiddleware validToken err = ", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -58,6 +60,7 @@ func CookieMiddleware(next http.Handler) http.Handler {
 func makeCookie(w http.ResponseWriter, userID uuid.UUID) {
 	token, err := buildToken(userID)
 	if err != nil {
+		fmt.Println("makeCookie buildToken err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -83,6 +86,7 @@ func buildToken(userID uuid.UUID) (string, error) {
 
 	tokenString, err := token.SignedString([]byte(SecretKey))
 	if err != nil {
+		fmt.Println("buildToken SignedString err = ", err)
 		return "", err
 	}
 
@@ -98,6 +102,7 @@ func validToken(tokenString string) (bool, error) {
 		return []byte(SecretKey), nil
 	})
 	if err != nil {
+		fmt.Println("validToken Parse err = ", err)
 		return false, err
 	}
 	if token.Valid {
@@ -117,11 +122,12 @@ func GetUserID(tokenString string) (uuid.UUID, error) {
 			return []byte(SecretKey), nil
 		})
 	if err != nil {
+		fmt.Println("GetUserID ParseWithClaims err = ", err)
 		return uuid.UUID{}, err
 	}
 
 	if !token.Valid {
-		return uuid.UUID{}, err
+		return uuid.UUID{}, nil
 	}
 
 	return claims.UserID, nil
