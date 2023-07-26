@@ -7,6 +7,7 @@ import (
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	"github.com/Pizhlo/yandex-shortener/internal/app/session"
 	storage "github.com/Pizhlo/yandex-shortener/storage/db"
 	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
@@ -15,9 +16,9 @@ import (
 )
 
 type Handler struct {
-	Service        *service.Service
-	Logger         log.Logger
-	FlagBaseAddr   string
+	Service      *service.Service
+	Logger       log.Logger
+	FlagBaseAddr string
 }
 
 func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
@@ -28,7 +29,7 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	j, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -37,29 +38,45 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	md, err := model.MakeLinkModel("", shortURL, string(j))
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	userID, err := session.GetUserID(cookie.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	linkModel, err := model.MakeLinkModel("", userID, shortURL, string(j))
 	if err != nil {
 		handler.Logger.Sugar.Debug("ReceiveUrl MakeLinkModel err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	
-	if err := handler.Service.Storage.Save(ctx, md, handler.Logger); err != nil {
+
+	if err := handler.Service.Storage.Save(ctx, linkModel); err != nil {
+		handler.Logger.Sugar.Debug("ReceiveUrl SaveLink err = ", err)
 		if err.Error() == uniqueViolation {
 			statusCode = http.StatusConflict
-
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
-		handler.Logger.Sugar.Debug("ReceiveUrl SaveLink err = ", err)
 	}
 
 	handler.Logger.Sugar.Debug("ReceiveUrl code = ", statusCode)
 
 	path, err := util.MakeURL(handler.FlagBaseAddr, shortURL)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	setHeader(w, "Content-Type", "text/plain", statusCode)
+
 	w.Write([]byte(path))
 }
 
@@ -73,7 +90,7 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	val, err := handler.Service.Storage.Get(ctx, id, handler.Logger)
+	val, err := handler.Service.Storage.Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
@@ -90,7 +107,8 @@ func Ping(w http.ResponseWriter, r *http.Request, db *storage.URLStorage) {
 
 	err := db.Ping(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusForbidden)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 

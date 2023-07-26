@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/service"
 	store "github.com/Pizhlo/yandex-shortener/storage/memory"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
@@ -15,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestGetURL(t *testing.T) {
@@ -69,21 +67,14 @@ func TestGetURL(t *testing.T) {
 	}
 
 	for _, v := range tests {
-		memory := &v.store
-		srv := service.New(memory)
-		h.Service = srv
-
-		logger := log.Logger{}
-
-		zapLogger, err := zap.NewDevelopment()
+		logger, err := makeLogger()
 		require.NoError(t, err)
 
-		defer zapLogger.Sync()
-
-		sugar := *zapLogger.Sugar()
-
-		logger.Sugar = sugar
-		h.Logger = logger
+		memory := &v.store
+		memory.Logger = logger
+		
+		srv := service.New(memory)
+		h.Service = srv
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)
@@ -149,21 +140,14 @@ func TestReceiveURL(t *testing.T) {
 	}
 
 	for _, v := range tests {
-		memory := &v.store
-		srv := service.New(memory)
-		h.Service = srv
-
-		logger := log.Logger{}
-
-		zapLogger, err := zap.NewDevelopment()
+		logger, err := makeLogger()
 		require.NoError(t, err)
 
-		defer zapLogger.Sync()
+		memory := &v.store
+		memory.Logger = logger
 
-		sugar := *zapLogger.Sugar()
-
-		logger.Sugar = sugar
-		h.Logger = logger
+		srv := service.New(memory)
+		h.Service = srv
 
 		r, err := runTestServer(h)
 		require.NoError(t, err)

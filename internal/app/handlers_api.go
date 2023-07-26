@@ -2,10 +2,13 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
+	"github.com/Pizhlo/yandex-shortener/internal/app/session"
+	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"go.uber.org/zap"
@@ -21,21 +24,33 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
 		handler.Logger.Sugar.Debug("ReceiveURLAPI cannot decode request JSON body; err = ", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	ctx := r.Context()
 
 	shortURL := util.Shorten(req.URL)
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	md, err := model.MakeLinkModel("", shortURL, req.URL)
+	userID, err := session.GetUserID(cookie.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	linkModel, err := model.MakeLinkModel("", userID, shortURL, req.URL)
 	if err != nil {
 		handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	err = handler.Service.Storage.Save(ctx, md, handler.Logger)
+	err = handler.Service.Storage.Save(ctx, linkModel)
 	if err != nil {
 		if err.Error() == uniqueViolation {
 			sendJSONRespSingleURL(w, handler.FlagBaseAddr, shortURL, http.StatusConflict, handler.Logger)
@@ -101,17 +116,30 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 	statusCode := http.StatusCreated
 	var path string
 
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	userID, err := session.GetUserID(cookie.Value)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	for _, val := range requestArr {
 		resp := models.ResponseAPI{ID: val.ID}
 		shortURL := util.Shorten(val.URL)
 
-		md, err := model.MakeLinkModel("", shortURL, val.URL)
+		linkModel, err := model.MakeLinkModel("", userID, shortURL, val.URL)
 		if err != nil {
 			handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
-		err = handler.Service.Storage.Save(ctx, md, handler.Logger)
+		err = handler.Service.Storage.Save(ctx, linkModel)
 		if err != nil {
 			if err.Error() == uniqueViolation {
 				statusCode = http.StatusConflict
@@ -151,5 +179,49 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 	}
 
 	handler.Logger.Sugar.Debug("respJSON Many URL: ", string(respJSON))
+
+}
+
+func GetUserURLS(handler Handler, w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	userID, err := session.GetUserID(cookie.Value)
+	if err != nil {
+		handler.Logger.Sugar.Debug("session.GetUserID err: ", zap.Error(err))
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	links, err := handler.Service.Storage.GetUserURLS(ctx, userID)
+	if err != nil {
+		if errors.Is(err, errs.ErrNotFound) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		handler.Logger.Sugar.Debug("Storage.GetUserURLS err: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	respJSON, err := json.Marshal(links)
+	if err != nil {
+		handler.Logger.Sugar.Debug("GetUserURLS cannot Marshal links: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	setHeader(w, "Content-Type", "application/json", http.StatusOK)
+	_, err = w.Write(respJSON)
+	if err != nil {
+		handler.Logger.Sugar.Debug("GetUserURLS cannot Write resp: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 }
