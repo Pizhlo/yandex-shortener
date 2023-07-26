@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/Pizhlo/yandex-shortener/internal/app/logger"
-	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	"github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
@@ -16,7 +15,7 @@ type Memory struct {
 	Logger logger.Logger
 }
 
-func New(logger log.Logger) (*Memory, error) {
+func New(logger logger.Logger) (*Memory, error) {
 	memory := &Memory{}
 	memory.Store = []model.Link{}
 	memory.Logger = logger
