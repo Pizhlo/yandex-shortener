@@ -29,6 +29,7 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	j, err := io.ReadAll(r.Body)
 	if err != nil {
+		handler.Logger.Sugar.Debug("ReceiveUrl ReadAll err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -40,12 +41,14 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie("token")
 	if err != nil {
+		handler.Logger.Sugar.Debug("ReceiveUrl Cookie err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	userID, err := session.GetUserID(cookie.Value)
 	if err != nil {
+		handler.Logger.Sugar.Debug("ReceiveUrl GetUserID err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
