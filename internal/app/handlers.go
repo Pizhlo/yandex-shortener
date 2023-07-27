@@ -13,6 +13,7 @@ import (
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -39,21 +40,27 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
+	var userID any
 	cookie, err := r.Cookie("token")
 	if err != nil {
-		handler.Logger.Sugar.Debug("ReceiveUrl Cookie err = ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value("userID")
+			handler.Logger.Sugar.Debug("ReceiveUrl userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("ReceiveUrl Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, err = session.GetUserID(cookie.Value)
+		if err != nil {
+			handler.Logger.Sugar.Debug("ReceiveUrl GetUserID err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
-	userID, err := session.GetUserID(cookie.Value)
-	if err != nil {
-		handler.Logger.Sugar.Debug("ReceiveUrl GetUserID err = ", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	linkModel, err := model.MakeLinkModel("", userID, shortURL, string(j))
+	linkModel, err := model.MakeLinkModel("", userID.(uuid.UUID), shortURL, string(j))
 	if err != nil {
 		handler.Logger.Sugar.Debug("ReceiveUrl MakeLinkModel err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)

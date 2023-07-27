@@ -83,6 +83,8 @@ func (db *URLStorage) Get(ctx context.Context, short string) (string, error) {
 
 	var originalURL string
 
+	db.Logger.Sugar.Debugf("SELECT original_url from urls where short_url = %s\n", short)
+
 	err := db.QueryRow(ctx, `SELECT original_url from urls where short_url = $1`, short).Scan(&originalURL)
 
 	if err != nil {
@@ -100,6 +102,8 @@ func (db *URLStorage) GetUserURLS(ctx context.Context, userID uuid.UUID) ([]mode
 	db.Logger.Sugar.Debug("GetUserURLS")
 
 	var result []models.UserLinks
+
+	db.Logger.Sugar.Debugf("SELECT short_url, original_url FROM urls WHERE user=%s\n", userID)
 
 	rows, err := db.Query(ctx, `SELECT short_url, original_url FROM urls WHERE "user"=$1`, userID)
 	if err != nil {

@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -20,13 +21,16 @@ type Claims struct {
 
 // CookieMiddleware проверяет куки на валидность; если проверка не пройдена - создает новую куку.
 func CookieMiddleware(next http.Handler) http.Handler {
+	fmt.Println("CookieMiddleware")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			if errors.Is(err, http.ErrNoCookie) {
 				userID := uuid.New()
 				makeCookie(w, userID)
-				next.ServeHTTP(w, r)
+				ctx := context.WithValue(context.WithValue(r.Context(), "userID", userID), "userID", userID)
+				fmt.Println("CookieMiddleware ctx value = ", ctx.Value("userID"))
+				next.ServeHTTP(w, r.WithContext(ctx))
 			} else {
 				fmt.Println("CookieMiddleware r.Cookie err = ", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -49,6 +53,20 @@ func CookieMiddleware(next http.Handler) http.Handler {
 		if !valid || cookie == nil {
 			userID := uuid.New()
 			makeCookie(w, userID)
+
+		}
+
+		cookie, err = r.Cookie("token")
+		if err != nil {
+			if errors.Is(err, http.ErrNoCookie) {
+				userID := uuid.New()
+				makeCookie(w, userID)
+				next.ServeHTTP(w, r)
+			} else {
+				fmt.Println("CookieMiddleware r.Cookie err = ", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		}
 
 		next.ServeHTTP(w, r)
@@ -58,6 +76,7 @@ func CookieMiddleware(next http.Handler) http.Handler {
 }
 
 func makeCookie(w http.ResponseWriter, userID uuid.UUID) {
+	fmt.Println("makeCookie")
 	token, err := buildToken(userID)
 	if err != nil {
 		fmt.Println("makeCookie buildToken err = ", err)
@@ -77,6 +96,7 @@ func makeCookie(w http.ResponseWriter, userID uuid.UUID) {
 }
 
 func buildToken(userID uuid.UUID) (string, error) {
+	fmt.Println("buildToken")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
@@ -95,6 +115,7 @@ func buildToken(userID uuid.UUID) (string, error) {
 }
 
 func validToken(tokenString string) (bool, error) {
+	fmt.Println("validToken")
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 		if t.Valid {
 			return []byte(SecretKey), nil
@@ -113,6 +134,7 @@ func validToken(tokenString string) (bool, error) {
 }
 
 func GetUserID(tokenString string) (uuid.UUID, error) {
+	fmt.Println("GetUserID")
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {
