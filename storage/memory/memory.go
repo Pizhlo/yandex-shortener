@@ -8,6 +8,7 @@ import (
 	"github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/google/uuid"
+	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
 )
 
 type Memory struct {
@@ -55,11 +56,15 @@ func (s *Memory) GetUserURLS(ctx context.Context, userID uuid.UUID) ([]models.Us
 	for _, val := range s.Store {
 		if val.UserID == userID {
 			link := models.UserLinks{
-				ShortURL: val.ShortURL,
+				ShortURL:    val.ShortURL,
 				OriginalURL: val.OriginalURL,
 			}
 			res = append(res, link)
 		}
+	}
+
+	if len(res) == 0 {
+		return res, errs.ErrNotFound
 	}
 
 	return res, nil

@@ -24,16 +24,19 @@ type FileStorage struct {
 func New(filename string, logger log.Logger) (*FileStorage, error) {
 	fileStorage := &FileStorage{}
 	if err := os.MkdirAll("tmp", os.ModePerm); err != nil {
+		logger.Sugar.Debug("filestorage New MkdirAll err = ", err)
 		return fileStorage, err
 	}
 
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
+		logger.Sugar.Debug("filestorage New OpenFile err = ", err)
 		return fileStorage, err
 	}
 
 	memory, err := storage.New(logger)
 	if err != nil {
+		logger.Sugar.Debug("filestorage New storage.New err = ", err)
 		return fileStorage, err
 	}
 
@@ -45,6 +48,7 @@ func New(filename string, logger log.Logger) (*FileStorage, error) {
 
 	links, err := fileStorage.RecoverData()
 	if err != nil {
+		logger.Sugar.Debug("filestorage New RecoverData err = ", err)
 		return fileStorage, err
 	}
 
@@ -63,12 +67,13 @@ func (f *FileStorage) RecoverData() ([]model.Link, error) {
 		if err := f.decoder.Decode(&link); err == io.EOF {
 			break
 		} else if err != nil {
+			f.Logger.Sugar.Debug("RecoverData f.decoder.Decode err = ", err)
 			return nil, err
 		}
 		links = append(links, link)
 	}
 
-	//logger.Sugar.Debug("links = ", links)
+	f.Logger.Sugar.Debug("links = ", links)
 
 	return links, nil
 }

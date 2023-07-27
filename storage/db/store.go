@@ -38,7 +38,8 @@ func (db *URLStorage) CreateTableURLs() error {
 
 	q := `CREATE TABLE IF NOT EXISTS urls(id uuid NOT NULL,
 		short_url text NOT NULL,
-		original_url text NOT NULL
+		original_url text NOT NULL,
+		"user" uuid NOT NULL
 	);
 	
 CREATE UNIQUE INDEX ON "urls" ("original_url");`

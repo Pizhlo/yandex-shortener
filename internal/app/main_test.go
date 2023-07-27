@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
+	"github.com/Pizhlo/yandex-shortener/internal/app/session"
 	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -35,6 +36,8 @@ func testRequest(t *testing.T, ts *httptest.Server, method,
 
 func runTestServer(handler Handler) (chi.Router, error) {
 	router := chi.NewRouter()
+
+	router.Use(session.CookieMiddleware)
 
 	logger, err := makeLogger()
 	if err != nil {
@@ -78,6 +81,6 @@ func makeLogger() (log.Logger, error) {
 	sugar := *zapLogger.Sugar()
 
 	logger.Sugar = sugar
-	
+
 	return logger, nil
 }
