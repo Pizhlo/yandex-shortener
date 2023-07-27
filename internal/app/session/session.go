@@ -13,7 +13,14 @@ import (
 
 const TokenExp = time.Hour * 3
 const SecretKey = "supersecretkey"
-const UserIDKey = "userID"
+
+type userIDKey = string
+type ownerValidKey = string
+
+const UserIDKey userIDKey = "UserIDKey"
+const ValidOwnerKey ownerValidKey = "ValidOwnerKey"
+
+type validOwner = bool
 
 type Claims struct {
 	jwt.RegisteredClaims
@@ -22,14 +29,16 @@ type Claims struct {
 
 // CookieMiddleware проверяет куки на валидность; если проверка не пройдена - создает новую куку.
 func CookieMiddleware(next http.Handler) http.Handler {
-	fmt.Println("CookieMiddleware")
+	fmt.Println("CookieMiddleware")	
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var valOwner validOwner = false
+
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			if errors.Is(err, http.ErrNoCookie) { // if there's no cookie
 				userID := uuid.New()
-				//makeCookie(w, userID)
-				ctx := context.WithValue(context.WithValue(r.Context(), UserIDKey, userID), UserIDKey, userID)
+				makeCookie(w, userID)
+				ctx := context.WithValue(context.WithValue(r.Context(), UserIDKey, userID), ValidOwnerKey, valOwner)
 				fmt.Println("CookieMiddleware ctx value = ", ctx.Value(UserIDKey))
 				next.ServeHTTP(w, r.WithContext(ctx))
 			} else {
