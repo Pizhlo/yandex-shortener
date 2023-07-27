@@ -11,6 +11,7 @@ import (
 	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -31,19 +32,28 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	shortURL := util.Shorten(req.URL)
+
+	var userID any
 	cookie, err := r.Cookie("token")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value(session.UserIDKey)
+			handler.Logger.Sugar.Debug("ReceiveURLAPI userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("ReceiveURLAPI Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, err = session.GetUserID(cookie.Value)
+		if err != nil {
+			handler.Logger.Sugar.Debug("ReceiveUrl GetUserID err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
-	userID, err := session.GetUserID(cookie.Value)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	linkModel, err := model.MakeLinkModel("", userID, shortURL, req.URL)
+	linkModel, err := model.MakeLinkModel("", userID.(uuid.UUID), shortURL, req.URL)
 	if err != nil {
 		handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -56,6 +66,7 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 			sendJSONRespSingleURL(w, handler.FlagBaseAddr, shortURL, http.StatusConflict, handler.Logger)
 			return
 		}
+		handler.Logger.Sugar.Debug("ReceiveURLAPI handler.Service.Storage.Save err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -106,7 +117,7 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&requestArr); err != nil {
-		handler.Logger.Sugar.Debug("cannot decode request JSON body: ", zap.Error(err))
+		handler.Logger.Sugar.Debug("ReceiveManyURLAPI cannot decode request JSON body: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -116,25 +127,33 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 	statusCode := http.StatusCreated
 	var path string
 
+	var userID any
 	cookie, err := r.Cookie("token")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	userID, err := session.GetUserID(cookie.Value)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value(session.UserIDKey)
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, err = session.GetUserID(cookie.Value)
+		if err != nil {
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI GetUserID err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	for _, val := range requestArr {
 		resp := models.ResponseAPI{ID: val.ID}
 		shortURL := util.Shorten(val.URL)
 
-		linkModel, err := model.MakeLinkModel("", userID, shortURL, val.URL)
+		linkModel, err := model.MakeLinkModel("", userID.(uuid.UUID), shortURL, val.URL)
 		if err != nil {
-			handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI MakeLinkModel err = ", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -152,7 +171,7 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 
 		path, err = util.MakeURL(handler.FlagBaseAddr, shortURL)
 		if err != nil {
-			handler.Logger.Sugar.Debug("cannot make path: ", zap.Error(err))
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI cannot make path: ", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -166,41 +185,51 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 
 	respJSON, err := json.Marshal(responseArr)
 	if err != nil {
-		handler.Logger.Sugar.Debug("cannot Marshal resp: ", zap.Error(err))
+		handler.Logger.Sugar.Debug("ReceiveManyURLAPI cannot Marshal resp: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	_, err = w.Write(respJSON)
 	if err != nil {
-		handler.Logger.Sugar.Debug("cannot Write resp: ", zap.Error(err))
+		handler.Logger.Sugar.Debug("ReceiveManyURLAPI cannot Write resp: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	handler.Logger.Sugar.Debug("respJSON Many URL: ", string(respJSON))
+	handler.Logger.Sugar.Debug("ReceiveManyURLAPI respJSON Many URL: ", string(respJSON))
 
 }
 
 func GetUserURLS(handler Handler, w http.ResponseWriter, r *http.Request) {
+	handler.Logger.Sugar.Debug("GetUserURLS")
+
 	ctx := r.Context()
 
+	var userID any
 	cookie, err := r.Cookie("token")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value(session.UserIDKey)
+			handler.Logger.Sugar.Debug("GetUserURLS userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("GetUserURLS Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, err = session.GetUserID(cookie.Value)
+		if err != nil {
+			handler.Logger.Sugar.Debug("GetUserURLS GetUserID err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
-	userID, err := session.GetUserID(cookie.Value)
-	if err != nil {
-		handler.Logger.Sugar.Debug("session.GetUserID err: ", zap.Error(err))
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	links, err := handler.Service.Storage.GetUserURLS(ctx, userID)
+	links, err := handler.Service.Storage.GetUserURLS(ctx, userID.(uuid.UUID))
 	if err != nil {
 		if errors.Is(err, errs.ErrNotFound) {
+			handler.Logger.Sugar.Debug("GetUserURLS  ErrNotFound: ", zap.Error(err))
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}

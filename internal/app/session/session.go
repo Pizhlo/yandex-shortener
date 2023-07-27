@@ -26,9 +26,9 @@ func CookieMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("token")
 		if err != nil {
-			if errors.Is(err, http.ErrNoCookie) {
+			if errors.Is(err, http.ErrNoCookie) { // if there's no cookie
 				userID := uuid.New()
-				makeCookie(w, userID)
+				//makeCookie(w, userID)
 				ctx := context.WithValue(context.WithValue(r.Context(), UserIDKey, userID), UserIDKey, userID)
 				fmt.Println("CookieMiddleware ctx value = ", ctx.Value(UserIDKey))
 				next.ServeHTTP(w, r.WithContext(ctx))
@@ -37,40 +37,22 @@ func CookieMiddleware(next http.Handler) http.Handler {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-		}
+		} else { // if there's any cookie
 
-		var valid bool
-
-		if cookie != nil {
-			valid, err = validToken(cookie.Value)
-
+			valid, err := validToken(cookie.Value)
 			if err != nil {
 				fmt.Println("CookieMiddleware validToken err = ", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+
+			if !valid { // if there was cookie but invalid
+				userID := uuid.New()
+				makeCookie(w, userID)
+			}
+
+			next.ServeHTTP(w, r)
 		}
-
-		if !valid || cookie == nil {
-			userID := uuid.New()
-			makeCookie(w, userID)
-
-		}
-
-		// cookie, err = r.Cookie("token")
-		// if err != nil {
-		// 	if errors.Is(err, http.ErrNoCookie) {
-		// 		userID := uuid.New()
-		// 		makeCookie(w, userID)
-		// 		next.ServeHTTP(w, r)
-		// 	} else {
-		// 		fmt.Println("CookieMiddleware r.Cookie err = ", err)
-		// 		w.WriteHeader(http.StatusInternalServerError)
-		// 		return
-		// 	}
-		// }
-
-		next.ServeHTTP(w, r)
 
 	})
 

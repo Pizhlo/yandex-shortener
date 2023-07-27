@@ -81,8 +81,8 @@ func main() {
 func Run(handler internal.Handler, db *storage.URLStorage) chi.Router {
 	r := chi.NewRouter()
 
-	r.Use(compress.UnpackData)
 	r.Use(session.CookieMiddleware)
+	r.Use(compress.UnpackData)
 	r.Use(handler.Logger.WithLogging)
 
 	r.Use(middleware.Compress(5, "application/javascript",
