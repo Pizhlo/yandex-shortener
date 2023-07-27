@@ -13,6 +13,7 @@ import (
 
 const TokenExp = time.Hour * 3
 const SecretKey = "supersecretkey"
+const UserIDKey = "userID"
 
 type Claims struct {
 	jwt.RegisteredClaims
@@ -28,8 +29,8 @@ func CookieMiddleware(next http.Handler) http.Handler {
 			if errors.Is(err, http.ErrNoCookie) {
 				userID := uuid.New()
 				makeCookie(w, userID)
-				ctx := context.WithValue(context.WithValue(r.Context(), "userID", userID), "userID", userID)
-				fmt.Println("CookieMiddleware ctx value = ", ctx.Value("userID"))
+				ctx := context.WithValue(context.WithValue(r.Context(), UserIDKey, userID), UserIDKey, userID)
+				fmt.Println("CookieMiddleware ctx value = ", ctx.Value(UserIDKey))
 				next.ServeHTTP(w, r.WithContext(ctx))
 			} else {
 				fmt.Println("CookieMiddleware r.Cookie err = ", err)
@@ -56,18 +57,18 @@ func CookieMiddleware(next http.Handler) http.Handler {
 
 		}
 
-		cookie, err = r.Cookie("token")
-		if err != nil {
-			if errors.Is(err, http.ErrNoCookie) {
-				userID := uuid.New()
-				makeCookie(w, userID)
-				next.ServeHTTP(w, r)
-			} else {
-				fmt.Println("CookieMiddleware r.Cookie err = ", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		}
+		// cookie, err = r.Cookie("token")
+		// if err != nil {
+		// 	if errors.Is(err, http.ErrNoCookie) {
+		// 		userID := uuid.New()
+		// 		makeCookie(w, userID)
+		// 		next.ServeHTTP(w, r)
+		// 	} else {
+		// 		fmt.Println("CookieMiddleware r.Cookie err = ", err)
+		// 		w.WriteHeader(http.StatusInternalServerError)
+		// 		return
+		// 	}
+		// }
 
 		next.ServeHTTP(w, r)
 

@@ -44,7 +44,7 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
-			userID = ctx.Value("userID")
+			userID = ctx.Value(session.UserIDKey)
 			handler.Logger.Sugar.Debug("ReceiveUrl userID = ", userID)
 		} else {
 			handler.Logger.Sugar.Debug("ReceiveUrl Cookie err = ", err)
