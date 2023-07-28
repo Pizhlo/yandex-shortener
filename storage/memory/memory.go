@@ -5,7 +5,6 @@ import (
 
 	"github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
-	"github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/google/uuid"
 	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
@@ -36,7 +35,7 @@ func (s *Memory) Get(ctx context.Context, short string) (string, error) {
 		}
 	}
 
-	return "", errors.ErrNotFound
+	return "", errs.ErrNotFound
 }
 
 func (s *Memory) Save(ctx context.Context, link model.Link) error {
