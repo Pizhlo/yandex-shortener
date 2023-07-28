@@ -34,6 +34,8 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 	shortURL := util.Shorten(req.URL)
 
 	var userID any
+	var ok bool
+
 	cookie, err := r.Cookie("token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
@@ -45,9 +47,9 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		userID, err = session.GetUserID(cookie.Value)
-		if err != nil {
-			handler.Logger.Sugar.Debug("ReceiveUrl GetUserID err = ", err)
+		userID, ok = session.GetUserID(cookie.Value)
+		if !ok {
+			handler.Logger.Sugar.Debug("ReceiveURLAPI GetUserID userID not ok")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -72,6 +74,7 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendJSONRespSingleURL(w, handler.FlagBaseAddr, shortURL, http.StatusCreated, handler.Logger)
+
 }
 
 func sendJSONRespSingleURL(w http.ResponseWriter, flagBaseAddr, short string, statusCode int, logger log.Logger) error {
@@ -128,6 +131,8 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 	var path string
 
 	var userID any
+	var ok bool
+
 	cookie, err := r.Cookie("token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
@@ -139,9 +144,9 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	} else {
-		userID, err = session.GetUserID(cookie.Value)
-		if err != nil {
-			handler.Logger.Sugar.Debug("ReceiveManyURLAPI GetUserID err = ", err)
+		userID, ok = session.GetUserID(cookie.Value)
+		if !ok {
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI GetUserID userID not ok")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -218,39 +223,39 @@ func GetUserURLS(handler Handler, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		userID, err = session.GetUserID(cookie.Value)
-		if err != nil {
-			handler.Logger.Sugar.Debug("GetUserURLS GetUserID err = ", err)
+		userID, ok := session.GetUserID(cookie.Value)
+		if ok {
+			links, err := handler.Service.Storage.GetUserURLS(ctx, userID)
+			if err != nil {
+				if errors.Is(err, errs.ErrNotFound) {
+					handler.Logger.Sugar.Debug("GetUserURLS  ErrNotFound: ", zap.Error(err))
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+				handler.Logger.Sugar.Debug("Storage.GetUserURLS err: ", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			respJSON, err := json.Marshal(links)
+			if err != nil {
+				handler.Logger.Sugar.Debug("GetUserURLS cannot Marshal links: ", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			setHeader(w, "Content-Type", "application/json", http.StatusOK)
+			_, err = w.Write(respJSON)
+			if err != nil {
+				handler.Logger.Sugar.Debug("GetUserURLS cannot Write resp: ", zap.Error(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		} else {
+			handler.Logger.Sugar.Debug("GetUserURLS GetUserID userID not ok")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-	}
-
-	links, err := handler.Service.Storage.GetUserURLS(ctx, userID.(uuid.UUID))
-	if err != nil {
-		if errors.Is(err, errs.ErrNotFound) {
-			handler.Logger.Sugar.Debug("GetUserURLS  ErrNotFound: ", zap.Error(err))
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
-		handler.Logger.Sugar.Debug("Storage.GetUserURLS err: ", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	respJSON, err := json.Marshal(links)
-	if err != nil {
-		handler.Logger.Sugar.Debug("GetUserURLS cannot Marshal links: ", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	setHeader(w, "Content-Type", "application/json", http.StatusOK)
-	_, err = w.Write(respJSON)
-	if err != nil {
-		handler.Logger.Sugar.Debug("GetUserURLS cannot Write resp: ", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 }
