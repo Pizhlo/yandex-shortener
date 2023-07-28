@@ -36,7 +36,6 @@ func CookieMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			fmt.Println("CookieMiddleware r.Cookie err = ", err)
 			ownerValid = false
-			userID = uuid.New()
 			token, userID, err = makeToken()
 		} else if userID, ok = GetUserID(cookie.Value); !ok {
 			ownerValid = false
