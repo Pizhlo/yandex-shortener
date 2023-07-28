@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -14,13 +13,10 @@ import (
 const TokenExp = time.Hour * 3
 const SecretKey = "supersecretkey"
 
-type userIDKey = string
-type ownerValidKey = string
+type ContextParamName string
 
-const UserIDKey userIDKey = "UserIDKey"
-const ValidOwnerKey ownerValidKey = "ValidOwnerKey"
-
-type validOwner = bool
+const UserIDKey ContextParamName = "UserIDKey"
+const ValidOwnerKey ContextParamName = "ValidOwnerKey"
 
 type Claims struct {
 	jwt.RegisteredClaims
@@ -29,39 +25,48 @@ type Claims struct {
 
 // CookieMiddleware проверяет куки на валидность; если проверка не пройдена - создает новую куку.
 func CookieMiddleware(next http.Handler) http.Handler {
-	fmt.Println("CookieMiddleware")	
+	fmt.Println("CookieMiddleware")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var valOwner validOwner = false
+		var userID uuid.UUID
+		//var token string
+		//var ok bool
+		ownerValid := true
 
 		cookie, err := r.Cookie("token")
 		if err != nil {
-			if errors.Is(err, http.ErrNoCookie) { // if there's no cookie
-				userID := uuid.New()
-				makeCookie(w, userID)
-				ctx := context.WithValue(context.WithValue(r.Context(), UserIDKey, userID), ValidOwnerKey, valOwner)
-				fmt.Println("CookieMiddleware ctx value = ", ctx.Value(UserIDKey))
-				next.ServeHTTP(w, r.WithContext(ctx))
-			} else {
-				fmt.Println("CookieMiddleware r.Cookie err = ", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		} else { // if there's any cookie
+			fmt.Println("CookieMiddleware r.Cookie err = ", err)
+			ownerValid = false
+			userID = uuid.New()
+			makeCookie(w, userID)
 
-			valid, err := validToken(cookie.Value)
+		} else {
+			userID, err = GetUserID(cookie.Value)
 			if err != nil {
-				fmt.Println("CookieMiddleware validToken err = ", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			if !valid { // if there was cookie but invalid
-				userID := uuid.New()
+				fmt.Println("CookieMiddleware GetUserID err = ", err)
+				// w.WriteHeader(http.StatusInternalServerError)
+				// return
+				ownerValid = false
+				userID = uuid.New()
 				makeCookie(w, userID)
 			}
 
-			next.ServeHTTP(w, r)
 		}
+
+		// valid, err := validToken(cookie.Value)
+		// if err != nil {
+		// 	fmt.Println("CookieMiddleware validToken err = ", err)
+		// 	w.WriteHeader(http.StatusInternalServerError)
+		// 	return
+		// }
+
+		// if !valid { // if there was cookie but invalid
+		// 	userID := uuid.New()
+		// 	makeCookie(w, userID)
+		// }
+
+		c := context.WithValue(context.WithValue(r.Context(), UserIDKey, userID), ValidOwnerKey, ownerValid)
+
+		next.ServeHTTP(w, r.WithContext(c))
 
 	})
 
