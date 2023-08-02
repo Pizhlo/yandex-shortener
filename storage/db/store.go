@@ -107,13 +107,15 @@ func (db *URLStorage) GetUserURLS(ctx context.Context, userID uuid.UUID) ([]mode
 	db.Logger.Sugar.Debugf("SELECT short_url, original_url FROM urls WHERE user=%s\n", userID)
 
 	rows, err := db.Query(ctx, `SELECT short_url, original_url FROM urls WHERE "user"=$1`, userID)
-	if err != nil {		
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return result, errs.ErrNotFound
 		}
 		db.Logger.Sugar.Debug("GetUserURLS err = ", err)
 		return result, err
 	}
+
+	defer rows.Close()
 
 	for rows.Next() {
 		var row models.UserLinks
@@ -124,8 +126,6 @@ func (db *URLStorage) GetUserURLS(ctx context.Context, userID uuid.UUID) ([]mode
 		}
 		result = append(result, row)
 	}
-
-	defer rows.Close()
 
 	db.Logger.Sugar.Debug("GetUserURLS result = ", result)
 
