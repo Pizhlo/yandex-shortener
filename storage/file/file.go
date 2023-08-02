@@ -90,7 +90,7 @@ func (f *FileStorage) Save(ctx context.Context, link model.Link) error {
 	return f.encoder.Encode(&link)
 }
 
-func (f *FileStorage) Get(ctx context.Context, short string) (string, error) {
+func (f *FileStorage) Get(ctx context.Context, short string) (string, bool, error) {
 	return f.Memory.Get(ctx, short)
 }
 

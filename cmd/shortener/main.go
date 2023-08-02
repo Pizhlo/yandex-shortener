@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/Pizhlo/yandex-shortener/config"
 	internal "github.com/Pizhlo/yandex-shortener/internal/app"
@@ -12,6 +14,7 @@ import (
 	storage "github.com/Pizhlo/yandex-shortener/storage/db"
 	file "github.com/Pizhlo/yandex-shortener/storage/file"
 	memory "github.com/Pizhlo/yandex-shortener/storage/memory"
+	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"go.uber.org/zap"
@@ -36,6 +39,18 @@ func main() {
 		"Starting server",
 		"addr", conf.FlagRunAddr,
 	)
+
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	// канал с данными
+	// inputCh := generator(doneCh, input)
+
+	// // получаем слайс каналов из 10 рабочих add
+	// channels := fanOut(doneCh, inputCh)
+
+	// // а теперь объединяем десять каналов в один
+	// addResultCh := fanIn(doneCh, channels...)
 
 	var srv *service.Service
 	var db *storage.URLStorage
@@ -71,6 +86,11 @@ func main() {
 		Service:      srv,
 		Logger:       logger,
 		FlagBaseAddr: conf.FlagBaseAddr,
+	}
+
+	if conf.FlagSaveToDB {
+		handler.LinksChan = make(chan model.DeleteLink, 1024)
+		go flushLinks(handler.LinksChan, db, handler.Logger)
 	}
 
 	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler, db)); err != nil {
@@ -114,6 +134,10 @@ func Run(handler internal.Handler, db *storage.URLStorage) chi.Router {
 			r.Get("/user/urls", func(w http.ResponseWriter, r *http.Request) {
 				internal.GetUserURLS(handler, w, r)
 			})
+
+			r.Delete("/user/urls", func(w http.ResponseWriter, r *http.Request) {
+				internal.DeleteURL(handler, w, r)
+			})
 		})
 	})
 
@@ -123,3 +147,95 @@ func Run(handler internal.Handler, db *storage.URLStorage) chi.Router {
 
 	return r
 }
+
+// flushLinks постоянно сохраняет несколько сообщений в хранилище с определённым интервалом
+func flushLinks(ch <-chan model.DeleteLink, db *storage.URLStorage, logger log.Logger) {
+	ticker := time.NewTicker(10 * time.Second)
+
+	var links []model.DeleteLink
+
+	for {
+		select {
+		case link := <-ch:
+			links = append(links, link)
+		case <-ticker.C:
+			if len(links) == 0 {
+				continue
+			}
+			err := db.DeleteURLS(context.TODO(), links...)
+			if err != nil {
+				logger.Sugar.Debug("cannot delete urls: ", zap.Error(err))
+				continue
+			}
+			links = nil
+		}
+	}
+}
+
+// // fanIn объединяет несколько каналов resultChs в один.
+// func fanIn(doneCh chan struct{}, resultChs ...chan int) chan int {
+// 	finalCh := make(chan int)
+
+// 	var wg sync.WaitGroup
+
+// 	for _, ch := range resultChs {
+// 		chClosure := ch
+
+// 		wg.Add(1)
+
+// 		go func() {
+// 			defer wg.Done()
+
+// 			for data := range chClosure {
+// 				select {
+// 				case <-doneCh:
+// 					return
+// 				case finalCh <- data:
+// 				}
+// 			}
+// 		}()
+// 	}
+
+// 	go func() {
+// 		wg.Wait()
+// 		close(finalCh)
+// 	}()
+
+// 	return finalCh
+// }
+
+// func generator(doneCh chan struct{}, input []int) chan int {
+// 	inputCh := make(chan int)
+
+// 	go func() {
+// 		defer close(inputCh)
+
+// 		for _, data := range input {
+// 			select {
+// 			case <-doneCh:
+// 				return
+// 			case inputCh <- data:
+// 			}
+// 		}
+// 	}()
+
+// 	return inputCh
+// }
+
+// fanOut принимает канал данных, порождает 10 горутин
+// func fanOut(doneCh chan struct{}, inputCh chan int) []chan int {
+// 	// количество горутин add
+// 	numWorkers := 10
+// 	// каналы, в которые отправляются результаты
+// 	channels := make([]chan int, numWorkers)
+
+// 	for i := 0; i < numWorkers; i++ {
+// 		// получаем канал из горутины add
+// 		addResultCh := add(doneCh, inputCh)
+// 		// отправляем его в слайс каналов
+// 		channels[i] = addResultCh
+// 	}
+
+// 	// возвращаем слайс каналов
+// 	return channels
+// }

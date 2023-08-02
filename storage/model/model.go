@@ -7,6 +7,12 @@ type Link struct {
 	UserID      uuid.UUID `json:"user_id"`
 	ShortURL    string    `json:"short_url"`
 	OriginalURL string    `json:"original_url"`
+	IsDeleted   bool      `json:"is_deleted"`
+}
+
+type DeleteLink struct {
+	UserID   uuid.UUID `json:"user_id"`
+	ShortURL string    `json:"short_url"`
 }
 
 func MakeLinkModel(id string, userID uuid.UUID, shortURL, originalURL string) (Link, error) {

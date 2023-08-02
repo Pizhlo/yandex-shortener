@@ -23,7 +23,7 @@ func New(logger logger.Logger) (*Memory, error) {
 	return memory, nil
 }
 
-func (s *Memory) Get(ctx context.Context, short string) (string, error) {
+func (s *Memory) Get(ctx context.Context, short string) (string, bool, error) {
 	s.Logger.Sugar.Debug("GetLinkByID")
 
 	s.Logger.Sugar.Debug("shortURL = ", short)
@@ -31,11 +31,11 @@ func (s *Memory) Get(ctx context.Context, short string) (string, error) {
 
 	for _, val := range s.Store {
 		if val.ShortURL == short {
-			return val.OriginalURL, nil
+			return val.OriginalURL, false, nil
 		}
 	}
 
-	return "", errs.ErrNotFound
+	return "", false, errs.ErrNotFound
 }
 
 func (s *Memory) Save(ctx context.Context, link model.Link) error {

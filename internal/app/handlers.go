@@ -19,6 +19,7 @@ import (
 type Handler struct {
 	Service      *service.Service
 	Logger       log.Logger
+	LinksChan    chan model.DeleteLink
 	FlagBaseAddr string
 }
 
@@ -104,7 +105,7 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	val, err := handler.Service.Storage.Get(ctx, id)
+	val, deleted, err := handler.Service.Storage.Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
@@ -113,7 +114,13 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
+
+	if deleted {
+		w.WriteHeader(http.StatusGone)
+	} else {
+		setHeader(w, "Location", val, http.StatusTemporaryRedirect)
+	}
+	
 }
 
 func Ping(w http.ResponseWriter, r *http.Request, db *storage.URLStorage) {

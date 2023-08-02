@@ -13,7 +13,7 @@ type Service struct {
 }
 
 type Storage interface {
-	Get(ctx context.Context, short string) (string, error)
+	Get(ctx context.Context, short string) (string, bool, error)
 	GetUserURLS(ctx context.Context, userID uuid.UUID) ([]models.UserLinks, error)
 	Save(ctx context.Context, link model.Link) error
 }

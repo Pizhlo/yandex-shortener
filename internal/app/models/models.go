@@ -19,6 +19,10 @@ type ResponseAPI struct {
 }
 
 type UserLinks struct {
-	ShortURL string `json:"short_url"`
+	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+}
+
+type DeleteLink struct {
+	ShortURL string 
 }
