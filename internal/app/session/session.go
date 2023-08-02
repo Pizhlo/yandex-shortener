@@ -30,20 +30,19 @@ func CookieMiddleware(next http.Handler) http.Handler {
 		var userID uuid.UUID
 		var token string
 		var ok bool
-		ownerValid := true
 
 		cookie, err := r.Cookie("token")
 		if err != nil {
 			fmt.Println("CookieMiddleware r.Cookie err = ", err)
-			ownerValid = false
-			userID := uuid.New()
+			userID = uuid.New()
+			fmt.Println("CookieMiddleware err != nil userID = ", userID)
 			token, err = makeToken(userID)
 			if err != nil {
 				fmt.Println("CookieMiddleware makeToken err = ", err)
 			}
 		} else if userID, ok = GetUserID(cookie.Value); !ok {
-			ownerValid = false
 			userID := uuid.New()
+			fmt.Println("CookieMiddleware else if userID = ", userID)
 			token, err = makeToken(userID)
 			if err != nil {
 				fmt.Println("CookieMiddleware makeToken !ok err = ", err)
@@ -54,7 +53,7 @@ func CookieMiddleware(next http.Handler) http.Handler {
 			http.SetCookie(w, &http.Cookie{Name: "token", Value: token, HttpOnly: true})
 		}
 
-		c := context.WithValue(context.WithValue(r.Context(), UserIDKey, userID), ValidOwnerKey, ownerValid)
+		c := context.WithValue(r.Context(), UserIDKey, userID)
 
 		next.ServeHTTP(w, r.WithContext(c))
 
@@ -73,12 +72,12 @@ func GetUserID(tokenString string) (uuid.UUID, bool) {
 		})
 
 	if err != nil {
-		fmt.Println("CookieMiddleware getOwnerID ParseWithClaims err = ", err)
+		fmt.Println("CookieMiddleware GetUserID ParseWithClaims err = ", err)
 		return uuid.UUID{}, false
 	}
 
 	if !token.Valid {
-		fmt.Println("CookieMiddleware getOwnerID token is invalid")
+		fmt.Println("CookieMiddleware GetUserID token is invalid")
 		return uuid.UUID{}, false
 	}
 
@@ -88,7 +87,10 @@ func GetUserID(tokenString string) (uuid.UUID, bool) {
 
 func makeToken(userID uuid.UUID) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
+        },
+		UserID: userID,		
 	})
 
 	tokenString, err := token.SignedString([]byte(SecretKey))
