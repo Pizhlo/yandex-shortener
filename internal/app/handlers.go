@@ -40,14 +40,14 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	var userID any
+	var userID uuid.UUID
 	var linkModel model.Link
 	var ok bool
 
 	cookie, err := r.Cookie("token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
-			userID = ctx.Value(session.UserIDKey)
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
 			handler.Logger.Sugar.Debug("ReceiveUrl userID = ", userID)
 		} else {
 			handler.Logger.Sugar.Debug("ReceiveUrl Cookie err = ", err)
@@ -63,7 +63,7 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	linkModel, err = model.MakeLinkModel("", userID.(uuid.UUID), shortURL, string(j))
+	linkModel, err = model.MakeLinkModel("", userID, shortURL, string(j))
 	if err != nil {
 		handler.Logger.Sugar.Debug("ReceiveUrl MakeLinkModel err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)

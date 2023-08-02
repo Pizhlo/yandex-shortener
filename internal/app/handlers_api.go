@@ -33,13 +33,13 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	shortURL := util.Shorten(req.URL)
 
-	var userID any
+	var userID uuid.UUID
 	var ok bool
 
 	cookie, err := r.Cookie("token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
-			userID = ctx.Value(session.UserIDKey)
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
 			handler.Logger.Sugar.Debug("ReceiveURLAPI userID = ", userID)
 		} else {
 			handler.Logger.Sugar.Debug("ReceiveURLAPI Cookie err = ", err)
@@ -55,7 +55,7 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	linkModel, err := model.MakeLinkModel("", userID.(uuid.UUID), shortURL, req.URL)
+	linkModel, err := model.MakeLinkModel("", userID, shortURL, req.URL)
 	if err != nil {
 		handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -130,13 +130,13 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 	statusCode := http.StatusCreated
 	var path string
 
-	var userID any
+	var userID uuid.UUID
 	var ok bool
 
 	cookie, err := r.Cookie("token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
-			userID = ctx.Value(session.UserIDKey)
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
 			handler.Logger.Sugar.Debug("ReceiveManyURLAPI userID = ", userID)
 		} else {
 			handler.Logger.Sugar.Debug("ReceiveManyURLAPI Cookie err = ", err)
@@ -156,7 +156,7 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 		resp := models.ResponseAPI{ID: val.ID}
 		shortURL := util.Shorten(val.URL)
 
-		linkModel, err := model.MakeLinkModel("", userID.(uuid.UUID), shortURL, val.URL)
+		linkModel, err := model.MakeLinkModel("", userID, shortURL, val.URL)
 		if err != nil {
 			handler.Logger.Sugar.Debug("ReceiveManyURLAPI MakeLinkModel err = ", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -211,11 +211,11 @@ func GetUserURLS(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	var userID any
+	var userID uuid.UUID
 	cookie, err := r.Cookie("token")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
-			userID = ctx.Value(session.UserIDKey)
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
 			handler.Logger.Sugar.Debug("GetUserURLS userID = ", userID)
 		} else {
 			handler.Logger.Sugar.Debug("GetUserURLS Cookie err = ", err)
@@ -226,7 +226,7 @@ func GetUserURLS(handler Handler, w http.ResponseWriter, r *http.Request) {
 		userID, _ = session.GetUserID(cookie.Value)
 	}
 
-	links, err := handler.Service.Storage.GetUserURLS(ctx, userID.(uuid.UUID))
+	links, err := handler.Service.Storage.GetUserURLS(ctx, userID)
 	if err != nil {
 		if errors.Is(err, errs.ErrNotFound) {
 			handler.Logger.Sugar.Debug("GetUserURLS  ErrNotFound: ", zap.Error(err))
