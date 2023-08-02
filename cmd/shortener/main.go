@@ -8,6 +8,7 @@ import (
 	"github.com/Pizhlo/yandex-shortener/internal/app/compress"
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	"github.com/Pizhlo/yandex-shortener/internal/app/session"
 	storage "github.com/Pizhlo/yandex-shortener/storage/db"
 	file "github.com/Pizhlo/yandex-shortener/storage/file"
 	memory "github.com/Pizhlo/yandex-shortener/storage/memory"
@@ -45,7 +46,7 @@ func main() {
 			logger.Sugar.Fatal("error while creating db connection: ", zap.Error(err))
 		}
 
-		db, err = storage.New(conn)
+		db, err = storage.New(conn, logger)
 		if err != nil {
 			logger.Sugar.Fatal("error while creating db: ", zap.Error(err))
 		}
@@ -67,9 +68,9 @@ func main() {
 	}
 
 	handler := internal.Handler{
-		Service:        srv,
-		Logger:         logger,
-		FlagBaseAddr:   conf.FlagBaseAddr,
+		Service:      srv,
+		Logger:       logger,
+		FlagBaseAddr: conf.FlagBaseAddr,
 	}
 
 	if err := http.ListenAndServe(conf.FlagRunAddr, Run(handler, db)); err != nil {
@@ -79,8 +80,10 @@ func main() {
 
 func Run(handler internal.Handler, db *storage.URLStorage) chi.Router {
 	r := chi.NewRouter()
-	r.Use(handler.Logger.WithLogging)
+
+	r.Use(session.CookieMiddleware)
 	r.Use(compress.UnpackData)
+	r.Use(handler.Logger.WithLogging)
 
 	r.Use(middleware.Compress(5, "application/javascript",
 		"application/json",
@@ -106,6 +109,10 @@ func Run(handler internal.Handler, db *storage.URLStorage) chi.Router {
 
 			r.Post("/shorten/batch", func(rw http.ResponseWriter, r *http.Request) {
 				internal.ReceiveManyURLAPI(handler, rw, r)
+			})
+
+			r.Get("/user/urls", func(w http.ResponseWriter, r *http.Request) {
+				internal.GetUserURLS(handler, w, r)
 			})
 		})
 	})

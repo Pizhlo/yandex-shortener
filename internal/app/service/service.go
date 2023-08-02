@@ -3,8 +3,9 @@ package service
 import (
 	"context"
 
-	"github.com/Pizhlo/yandex-shortener/internal/app/logger"
+	"github.com/Pizhlo/yandex-shortener/internal/app/models"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -12,8 +13,9 @@ type Service struct {
 }
 
 type Storage interface {
-	Get(ctx context.Context, short string, logger logger.Logger) (string, error)
-	Save(ctx context.Context, link model.Link, logger logger.Logger) error
+	Get(ctx context.Context, short string) (string, error)
+	GetUserURLS(ctx context.Context, userID uuid.UUID) ([]models.UserLinks, error)
+	Save(ctx context.Context, link model.Link) error
 }
 
 func New(storage Storage) *Service {
