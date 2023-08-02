@@ -290,6 +290,11 @@ func DeleteURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		handler.Logger.Sugar.Debug("DeleteURL io.ReadAll err = ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	handler.Logger.Sugar.Debug("DeleteURL body: ", string(body))
 	var reqArr []string
 

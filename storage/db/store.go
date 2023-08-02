@@ -12,6 +12,7 @@ import (
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Store interface {
@@ -23,11 +24,11 @@ type Store interface {
 }
 
 type URLStorage struct {
-	*pgx.Conn
+	*pgxpool.Pool
 	Logger log.Logger
 }
 
-func New(conn *pgx.Conn, logger log.Logger) (*URLStorage, error) {
+func New(conn *pgxpool.Pool, logger log.Logger) (*URLStorage, error) {
 	db := &URLStorage{conn, logger}
 
 	return db, db.CreateTableURLs()
@@ -63,7 +64,7 @@ CREATE UNIQUE INDEX ON "urls" ("original_url");`
 }
 
 func (db *URLStorage) Ping(ctx context.Context) error {
-	return db.PgConn().Ping(ctx)
+	return db.Pool.Ping(ctx)
 }
 
 func (db *URLStorage) Save(ctx context.Context, link model.Link) error {
@@ -148,9 +149,16 @@ func (db *URLStorage) DeleteURLS(ctx context.Context, link ...model.DeleteLink) 
   WHERE "user"='%s' AND "short_url" = '%s';`, link.UserID, link.ShortURL)
 	}
 
-	reader := db.PgConn().Exec(ctx, q)
+	// reader := db.Pool().Exec(ctx, q)
 
-	defer reader.Close()
+	// if err := reader.Close(); err != nil {
+	// 	return err
+	// }
+
+	_, err := db.Pool.Exec(ctx, q)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
