@@ -36,13 +36,15 @@ func CookieMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			fmt.Println("CookieMiddleware r.Cookie err = ", err)
 			ownerValid = false
-			token, userID, err = makeToken()
+			userID := uuid.New()
+			token, err = makeToken(userID)
 			if err != nil {
 				fmt.Println("CookieMiddleware makeToken err = ", err)
 			}
 		} else if userID, ok = GetUserID(cookie.Value); !ok {
 			ownerValid = false
-			token, userID, err = makeToken()
+			userID := uuid.New()
+			token, err = makeToken(userID)
 			if err != nil {
 				fmt.Println("CookieMiddleware makeToken !ok err = ", err)
 			}
@@ -84,16 +86,15 @@ func GetUserID(tokenString string) (uuid.UUID, bool) {
 	return claims.UserID, true
 }
 
-func makeToken() (string, uuid.UUID, error) {
-	userID := uuid.New()
+func makeToken(userID uuid.UUID) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		UserID: userID,
 	})
 
 	tokenString, err := token.SignedString([]byte(SecretKey))
 	if err != nil {
-		return "", uuid.UUID{}, err
+		return "", err
 	}
 
-	return tokenString, userID, nil
+	return tokenString, nil
 }
