@@ -4,11 +4,18 @@ import "github.com/google/uuid"
 
 type Link struct {
 	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
 	ShortURL    string    `json:"short_url"`
 	OriginalURL string    `json:"original_url"`
+	IsDeleted   bool      `json:"is_deleted"`
 }
 
-func MakeLinkModel(id, shortURL, originalURL string) (Link, error) {
+type DeleteLink struct {
+	UserID   uuid.UUID `json:"user_id"`
+	ShortURL string    `json:"short_url"`
+}
+
+func MakeLinkModel(id string, userID uuid.UUID, shortURL, originalURL string) (Link, error) {
 	var realID uuid.UUID
 	var err error
 
@@ -23,6 +30,7 @@ func MakeLinkModel(id, shortURL, originalURL string) (Link, error) {
 
 	link := Link{
 		ID:          realID,
+		UserID:      userID,
 		ShortURL:    shortURL,
 		OriginalURL: originalURL,
 	}

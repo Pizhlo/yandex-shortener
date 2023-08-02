@@ -47,7 +47,12 @@ func TestReceiveURLAPI(t *testing.T) {
 	}
 
 	for _, v := range testCases {
+		logger, err := makeLogger()
+		require.NoError(t, err)
+
 		memory := &v.store
+		memory.Logger = logger
+
 		srv := service.New(memory)
 		h.Service = srv
 

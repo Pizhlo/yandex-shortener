@@ -7,17 +7,20 @@ import (
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/service"
+	"github.com/Pizhlo/yandex-shortener/internal/app/session"
 	storage "github.com/Pizhlo/yandex-shortener/storage/db"
 	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
 	"github.com/go-chi/chi"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
-	Service        *service.Service
-	Logger         log.Logger
-	FlagBaseAddr   string
+	Service      *service.Service
+	Logger       log.Logger
+	LinksChan    chan model.DeleteLink
+	FlagBaseAddr string
 }
 
 func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
@@ -28,7 +31,8 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	j, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		handler.Logger.Sugar.Debug("ReceiveUrl ReadAll err = ", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -37,30 +41,58 @@ func ReceiveURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	md, err := model.MakeLinkModel("", shortURL, string(j))
+	var userID uuid.UUID
+	var linkModel model.Link
+	var ok bool
+
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
+			handler.Logger.Sugar.Debug("ReceiveUrl userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("ReceiveUrl Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, ok = session.GetUserID(cookie.Value)
+		if !ok {
+			handler.Logger.Sugar.Debug("ReceiveUrl GetUserID userID not ok")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	linkModel, err = model.MakeLinkModel("", userID, shortURL, string(j))
 	if err != nil {
 		handler.Logger.Sugar.Debug("ReceiveUrl MakeLinkModel err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	
-	if err := handler.Service.Storage.Save(ctx, md, handler.Logger); err != nil {
+
+	if err := handler.Service.Storage.Save(ctx, linkModel); err != nil {
+		handler.Logger.Sugar.Debug("ReceiveUrl SaveLink err = ", err)
 		if err.Error() == uniqueViolation {
 			statusCode = http.StatusConflict
-
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
-		handler.Logger.Sugar.Debug("ReceiveUrl SaveLink err = ", err)
 	}
 
 	handler.Logger.Sugar.Debug("ReceiveUrl code = ", statusCode)
 
 	path, err := util.MakeURL(handler.FlagBaseAddr, shortURL)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	setHeader(w, "Content-Type", "text/plain", statusCode)
+
 	w.Write([]byte(path))
+
 }
 
 func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
@@ -73,7 +105,7 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	val, err := handler.Service.Storage.Get(ctx, id, handler.Logger)
+	val, deleted, err := handler.Service.Storage.Get(ctx, id)
 	if err != nil {
 		if errors.Is(err, errs.ErrNotFound) {
 			w.WriteHeader(http.StatusNotFound)
@@ -82,7 +114,13 @@ func GetURL(handler Handler, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	setHeader(w, "Location", val, http.StatusTemporaryRedirect)
+
+	if deleted {
+		w.WriteHeader(http.StatusGone)
+	} else {
+		setHeader(w, "Location", val, http.StatusTemporaryRedirect)
+	}
+	
 }
 
 func Ping(w http.ResponseWriter, r *http.Request, db *storage.URLStorage) {
@@ -90,7 +128,8 @@ func Ping(w http.ResponseWriter, r *http.Request, db *storage.URLStorage) {
 
 	err := db.Ping(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusForbidden)
+		return
 	}
 	w.WriteHeader(http.StatusOK)
 

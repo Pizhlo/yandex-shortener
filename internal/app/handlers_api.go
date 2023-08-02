@@ -2,12 +2,17 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 
 	log "github.com/Pizhlo/yandex-shortener/internal/app/logger"
 	"github.com/Pizhlo/yandex-shortener/internal/app/models"
+	"github.com/Pizhlo/yandex-shortener/internal/app/session"
+	errs "github.com/Pizhlo/yandex-shortener/storage/errors"
 	"github.com/Pizhlo/yandex-shortener/storage/model"
 	"github.com/Pizhlo/yandex-shortener/util"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -21,7 +26,7 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
 		handler.Logger.Sugar.Debug("ReceiveURLAPI cannot decode request JSON body; err = ", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -29,23 +34,48 @@ func ReceiveURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) {
 
 	shortURL := util.Shorten(req.URL)
 
-	md, err := model.MakeLinkModel("", shortURL, req.URL)
+	var userID uuid.UUID
+	var ok bool
+
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
+			handler.Logger.Sugar.Debug("ReceiveURLAPI userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("ReceiveURLAPI Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, ok = session.GetUserID(cookie.Value)
+		if !ok {
+			handler.Logger.Sugar.Debug("ReceiveURLAPI GetUserID userID not ok")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	linkModel, err := model.MakeLinkModel("", userID, shortURL, req.URL)
 	if err != nil {
 		handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	err = handler.Service.Storage.Save(ctx, md, handler.Logger)
+	err = handler.Service.Storage.Save(ctx, linkModel)
 	if err != nil {
 		if err.Error() == uniqueViolation {
 			sendJSONRespSingleURL(w, handler.FlagBaseAddr, shortURL, http.StatusConflict, handler.Logger)
 			return
 		}
+		handler.Logger.Sugar.Debug("ReceiveURLAPI handler.Service.Storage.Save err = ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	sendJSONRespSingleURL(w, handler.FlagBaseAddr, shortURL, http.StatusCreated, handler.Logger)
+
 }
 
 func sendJSONRespSingleURL(w http.ResponseWriter, flagBaseAddr, short string, statusCode int, logger log.Logger) error {
@@ -91,7 +121,7 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&requestArr); err != nil {
-		handler.Logger.Sugar.Debug("cannot decode request JSON body: ", zap.Error(err))
+		handler.Logger.Sugar.Debug("ReceiveManyURLAPI cannot decode request JSON body: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -101,17 +131,40 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 	statusCode := http.StatusCreated
 	var path string
 
+	var userID uuid.UUID
+	var ok bool
+
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, ok = session.GetUserID(cookie.Value)
+		if !ok {
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI GetUserID userID not ok")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
 	for _, val := range requestArr {
 		resp := models.ResponseAPI{ID: val.ID}
 		shortURL := util.Shorten(val.URL)
 
-		md, err := model.MakeLinkModel("", shortURL, val.URL)
+		linkModel, err := model.MakeLinkModel("", userID, shortURL, val.URL)
 		if err != nil {
-			handler.Logger.Sugar.Debug("ReceiveURLAPI MakeLinkModel err = ", err)
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI MakeLinkModel err = ", err)
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
-		err = handler.Service.Storage.Save(ctx, md, handler.Logger)
+		err = handler.Service.Storage.Save(ctx, linkModel)
 		if err != nil {
 			if err.Error() == uniqueViolation {
 				statusCode = http.StatusConflict
@@ -124,7 +177,7 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 
 		path, err = util.MakeURL(handler.FlagBaseAddr, shortURL)
 		if err != nil {
-			handler.Logger.Sugar.Debug("cannot make path: ", zap.Error(err))
+			handler.Logger.Sugar.Debug("ReceiveManyURLAPI cannot make path: ", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -138,18 +191,125 @@ func ReceiveManyURLAPI(handler Handler, w http.ResponseWriter, r *http.Request) 
 
 	respJSON, err := json.Marshal(responseArr)
 	if err != nil {
-		handler.Logger.Sugar.Debug("cannot Marshal resp: ", zap.Error(err))
+		handler.Logger.Sugar.Debug("ReceiveManyURLAPI cannot Marshal resp: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	_, err = w.Write(respJSON)
 	if err != nil {
-		handler.Logger.Sugar.Debug("cannot Write resp: ", zap.Error(err))
+		handler.Logger.Sugar.Debug("ReceiveManyURLAPI cannot Write resp: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	handler.Logger.Sugar.Debug("respJSON Many URL: ", string(respJSON))
+	handler.Logger.Sugar.Debug("ReceiveManyURLAPI respJSON Many URL: ", string(respJSON))
 
+}
+
+func GetUserURLS(handler Handler, w http.ResponseWriter, r *http.Request) {
+	handler.Logger.Sugar.Debug("GetUserURLS")
+
+	ctx := r.Context()
+
+	var userID uuid.UUID
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
+			handler.Logger.Sugar.Debug("GetUserURLS userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("GetUserURLS Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, _ = session.GetUserID(cookie.Value)
+	}
+
+	links, err := handler.Service.Storage.GetUserURLS(ctx, userID)
+	if err != nil {
+		if errors.Is(err, errs.ErrNotFound) {
+			handler.Logger.Sugar.Debug("GetUserURLS  ErrNotFound: ", zap.Error(err))
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		handler.Logger.Sugar.Debug("Storage.GetUserURLS err: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp := []models.UserLinks{}
+
+	for _, link := range links {
+		path, err := util.MakeURL(handler.FlagBaseAddr, link.ShortURL)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		link.ShortURL = path
+
+		resp = append(resp, link)
+	}
+
+	respJSON, err := json.Marshal(resp)
+	if err != nil {
+		handler.Logger.Sugar.Debug("GetUserURLS cannot Marshal links: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	setHeader(w, "Content-Type", "application/json", http.StatusOK)
+	_, err = w.Write(respJSON)
+	if err != nil {
+		handler.Logger.Sugar.Debug("GetUserURLS cannot Write resp: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func DeleteURL(handler Handler, w http.ResponseWriter, r *http.Request) {
+	handler.Logger.Sugar.Debug("DeleteURL")
+
+	ctx := r.Context()
+
+	var userID uuid.UUID
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			userID = ctx.Value(session.UserIDKey).(uuid.UUID)
+			handler.Logger.Sugar.Debug("DeleteURL userID = ", userID)
+		} else {
+			handler.Logger.Sugar.Debug("DeleteURL Cookie err = ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		userID, _ = session.GetUserID(cookie.Value)
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		handler.Logger.Sugar.Debug("DeleteURL io.ReadAll err = ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	handler.Logger.Sugar.Debug("DeleteURL body: ", string(body))
+	var reqArr []string
+
+	_ = json.Unmarshal(body, &reqArr)
+
+	handler.Logger.Sugar.Debug("DeleteURL res: ", reqArr)
+
+	for _, val := range reqArr {
+		req := model.DeleteLink{
+			UserID:   userID,
+			ShortURL: val,
+		}
+
+		handler.LinksChan <- req
+	}
+
+	w.WriteHeader(http.StatusAccepted)
 }
