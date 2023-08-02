@@ -238,7 +238,21 @@ func GetUserURLS(handler Handler, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respJSON, err := json.Marshal(links)
+	resp :=  []models.UserLinks{}
+
+	for _, link := range links {
+		path, err := util.MakeURL(handler.FlagBaseAddr, link.ShortURL)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		link.ShortURL = path
+
+		resp = append(resp, link)
+	}
+
+	respJSON, err := json.Marshal(resp)
 	if err != nil {
 		handler.Logger.Sugar.Debug("GetUserURLS cannot Marshal links: ", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
