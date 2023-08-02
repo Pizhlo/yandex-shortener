@@ -223,39 +223,33 @@ func GetUserURLS(handler Handler, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		userID, ok := session.GetUserID(cookie.Value)
-		if ok {
-			links, err := handler.Service.Storage.GetUserURLS(ctx, userID)
-			if err != nil {
-				if errors.Is(err, errs.ErrNotFound) {
-					handler.Logger.Sugar.Debug("GetUserURLS  ErrNotFound: ", zap.Error(err))
-					w.WriteHeader(http.StatusNoContent)
-					return
-				}
-				handler.Logger.Sugar.Debug("Storage.GetUserURLS err: ", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			respJSON, err := json.Marshal(links)
-			if err != nil {
-				handler.Logger.Sugar.Debug("GetUserURLS cannot Marshal links: ", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			setHeader(w, "Content-Type", "application/json", http.StatusOK)
-			_, err = w.Write(respJSON)
-			if err != nil {
-				handler.Logger.Sugar.Debug("GetUserURLS cannot Write resp: ", zap.Error(err))
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		} else {
-			handler.Logger.Sugar.Debug("GetUserURLS GetUserID userID not ok")
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		userID, _ = session.GetUserID(cookie.Value)
 	}
 
+	links, err := handler.Service.Storage.GetUserURLS(ctx, userID.(uuid.UUID))
+	if err != nil {
+		if errors.Is(err, errs.ErrNotFound) {
+			handler.Logger.Sugar.Debug("GetUserURLS  ErrNotFound: ", zap.Error(err))
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		handler.Logger.Sugar.Debug("Storage.GetUserURLS err: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	respJSON, err := json.Marshal(links)
+	if err != nil {
+		handler.Logger.Sugar.Debug("GetUserURLS cannot Marshal links: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	setHeader(w, "Content-Type", "application/json", http.StatusOK)
+	_, err = w.Write(respJSON)
+	if err != nil {
+		handler.Logger.Sugar.Debug("GetUserURLS cannot Write resp: ", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
